@@ -445,13 +445,14 @@ function gDims(g) {
   const m = trimMask(g.m); return { c: m[0].length, r: m.length };
 }
 
-function assemble(correct, g1, g2, exclude = []) {
-  const used = new Set([gkey(correct), ...exclude]), out = [];
+// 選択肢を4つにまとめる。keyFn：同じとみなす形のまとめ方、ok：ありえる形かどうか
+function assemble(correct, g1, g2, keyFn = gkey, ok = () => true) {
+  const used = new Set([keyFn(correct)]), out = [];
   const take = (list, n) => {
     for (const c of shuffle(list.slice())) {
       if (out.length >= n) break;
-      const k = gkey(c.g);
-      if (!used.has(k) && !gEmpty(c.g)) { used.add(k); out.push(c); }
+      const k = keyFn(c.g);
+      if (!used.has(k) && !gEmpty(c.g) && ok(c.g)) { used.add(k); out.push(c); }
     }
   };
   take(g1, 2); take(g2, 3); take(g1, 3);
@@ -471,13 +472,15 @@ function sideChoices(s, dir) {
     { g: { t: 'cols', a: near }, k: 'near' },
     { g: other, k: 'other' },
   ];
-  if (a.some(v => v > 1)) g1.push({ g: { t: 'cols', a: a.map(() => 1) }, k: 'flat' });
   const g2 = [];
   a.forEach((v, i) => {
-    if (v < 4) { const p = a.slice(); p[i] = v + 1; g2.push({ g: { t: 'cols', a: p }, k: 'plus' }); }
+    if (v < 3) { const p = a.slice(); p[i] = v + 1; g2.push({ g: { t: 'cols', a: p }, k: 'plus' }); }
     if (v > 1) { const m = a.slice(); m[i] = v - 1; g2.push({ g: { t: 'cols', a: m }, k: 'minus' }); }
   });
-  return assemble(correct, g1, g2);
+  // 正解と同じ横はばで、すき間がなく、積み木の数の差が2つまでの形だけを使う
+  const sum = x => x.reduce((p, q) => p + q, 0);
+  const ok = g => g.a.length === a.length && g.a.every(v => v >= 1) && Math.abs(sum(g.a) - sum(a)) <= 2;
+  return assemble(correct, g1, g2, gkey, ok);
 }
 
 function rot90(m) {
@@ -485,11 +488,27 @@ function rot90(m) {
   for (let x = 0; x < m[0].length; x++) { const r = []; for (let z = m.length - 1; z >= 0; z--) r.push(m[z][x]); o.push(r); }
   return o;
 }
+// 上から見た形は、回すと同じになる形を「同じ形」とみなす（どの向きから見ても答えが1つになる）
+function rotKey(g) {
+  let m = trimMask(g.m); const ks = [];
+  for (let i = 0; i < 4; i++) { ks.push(m.map(r => r.join('')).join('/')); m = rot90(m); }
+  return 'm' + ks.sort()[0];
+}
+function connected(m) {
+  const cells = []; m.forEach((r, z) => r.forEach((v, x) => { if (v) cells.push(z + ',' + x); }));
+  if (!cells.length) return false;
+  const seen = new Set([cells[0]]), st = [cells[0]];
+  while (st.length) {
+    const [z, x] = st.pop().split(',').map(Number);
+    for (const [dz, dx] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const k = (z + dz) + ',' + (x + dx);
+      if (m[z + dz] && m[z + dz][x + dx] && !seen.has(k)) { seen.add(k); st.push(k); }
+    }
+  }
+  return seen.size === cells.length;
+}
 function topChoices(s) {
   const m = viewTop(s).m, correct = { t: 'mask', m };
-  // 正解を90度・180度・270度回した形は、見る向きを変えると正解にもなるので使わない
-  const exclude = []; let rm = trimMask(m);
-  for (let i = 0; i < 4; i++) { exclude.push('m' + rm.map(r => r.join('')).join('/')); rm = rot90(rm); }
   const g1 = [
     { g: { t: 'mask', m: m.map(r => r.slice().reverse()) }, k: 'mirrorTop' },
     { g: { t: 'mask', m: m.slice().reverse().map(r => r.slice()) }, k: 'flipTop' },
@@ -502,15 +521,18 @@ function topChoices(s) {
       if (nb) { c[z][x] = 1; g2.push({ g: { t: 'mask', m: c }, k: 'plusTop' }); }
     } else if (n > 2) { c[z][x] = 0; g2.push({ g: { t: 'mask', m: c }, k: 'minusTop' }); }
   }
-  return assemble(correct, g1, g2, exclude);
+  // 正解と同じたて・横の大きさで、つながっている形だけを使う
+  const d0 = gDims(correct);
+  const ok = g => { const d = gDims(g); return d.c === d0.c && d.r === d0.r && connected(trimMask(g.m)); };
+  return assemble(correct, g1, g2, rotKey, ok);
 }
 
 // 数の選択肢：見えている数だけ、上から見たマスの数だけ、などのまちがいを入れる
 function countChoices(s) {
   const T = s.total, c = [{ v: T, k: 'correct' }], used = new Set([T]);
   const add = (v, k) => { if (v > 0 && !used.has(v) && c.length < 4) { used.add(v); c.push({ v, k }); } };
-  if (s.hidden > 0) add(T - s.hidden, 'visible');
-  add(s.foot, 'foot');
+  if (s.hidden > 0 && s.hidden <= 3) add(T - s.hidden, 'visible');
+  if (T - s.foot <= 3) add(s.foot, 'foot');
   for (const d of shuffle([1, -1, 2, -2, 3, -3])) add(T + d, 'near');
   c.sort((x, y) => x.v - y.v);
   return { choices: c, ans: c.findIndex(x => x.k === 'correct') };
@@ -854,9 +876,9 @@ function goSpin() {
   const step = Math.PI / 2;
   const base = cam.tween ? cam.tween.t0 + cam.tween.dt : cam.theta;
   const tt = HOME.theta + (Math.round((base - HOME.theta) / step) + 1) * step;
-  cam.tween = { t0: cam.theta, p0: cam.phi, dt: tt - cam.theta, dp: HOME.phi - cam.phi, time: 0, dur: 1.0 };
+  cam.tween = { t0: cam.theta, p0: cam.phi, dt: tt - cam.theta, dp: HOME.phi - cam.phi, time: 0, dur: 1.4 };
 }
-function goView(name, dur = 0.9) {
+function goView(name, dur = 1.8) {
   const v = VIEWS[name];
   let dt = v.theta - cam.theta;
   while (dt > Math.PI) dt -= Math.PI * 2;
@@ -876,7 +898,7 @@ function update(dt) {
     if (countAnim.t <= 0) {
       if (countAnim.i < blocks.length) {
         blocks[countAnim.i].visible = true; countAnim.i++;
-        showBadge(countAnim.i); sndPop(); countAnim.t = 0.45; needs = true;
+        showBadge(countAnim.i); sndPop(); countAnim.t = 1.0; needs = true;
       } else countAnim = null;
     }
   }
@@ -884,7 +906,7 @@ function update(dt) {
 function startCount() {
   if (!renderer) return;
   blocks.forEach(b => (b.visible = false));
-  countAnim = { i: 0, t: 0.5 }; showBadge(0); needs = true;
+  countAnim = { i: 0, t: 1.0 }; showBadge(0); needs = true;
 }
 function showBadge(n) { const b = $('countBadge'); b.classList.remove('hidden'); b.innerHTML = R(`${n} {個|こ}`); }
 function hideBadge() { $('countBadge').classList.add('hidden'); }
@@ -937,7 +959,7 @@ function explain(kind, dir) {
     case 'plus': return '{積|つ}み{木|き}が1つ{多|おお}い{形|かたち}だよ。';
     case 'minus': return '{積|つ}み{木|き}が1つ{少|すく}ない{形|かたち}だよ。';
     case 'mirrorTop': return '{左|ひだり}と{右|みぎ}が{反対|はんたい}になっているよ。';
-    case 'flipTop': return '{手前|てまえ}とおくが{反対|はんたい}になっているよ。{正面|しょうめん}は{下|した}がわだよ。';
+    case 'flipTop': return '{手前|てまえ}とおくが{反対|はんたい}になっているよ。';
     case 'plusTop': return 'マスが1つ{多|おお}いよ。';
     case 'minusTop': return 'マスが1つ{少|すく}ないよ。';
   }
@@ -1017,7 +1039,7 @@ function showQ() {
     const dims = { c: 1, r: 1 };
     q.choices.forEach(c => { const d = gDims(c.g); dims.c = Math.max(dims.c, d.c); dims.r = Math.max(dims.r, d.r); });
     area.innerHTML = '<div class="choices">' + q.choices.map((c, i) =>
-      `<button class="choice" data-i="${i}"><span class="ck">${KANA[i]}</span>${choiceSvg(c.g, dims)}${q.dir === 'top' ? R('<span class="fside">▲ {正面|しょうめん}</span>') : ''}<span class="cmark"></span></button>`).join('') + '</div>';
+      `<button class="choice" data-i="${i}"><span class="ck">${KANA[i]}</span>${choiceSvg(c.g, dims)}<span class="cmark"></span></button>`).join('') + '</div>';
     area.querySelectorAll('.choice').forEach(b => b.addEventListener('click', () => answerChoice(+b.dataset.i)));
   } else if (q.type === 'solid') {
     if (!q.choices) { area.innerHTML = R('<p class="glerr">この{端末|たんまつ}では、{立体|りったい}を{表示|ひょうじ}できないよ。</p>'); }
