@@ -88,6 +88,8 @@ h1 rt{font-size:0.4em}
 .choice.nchoice{justify-content:center;height:clamp(96px,15vh,130px)}
 .nval{flex:1;display:flex;align-items:center;gap:4px;font-size:44px;font-weight:700}
 .nval small{font-size:22px}
+.choice.schoice{height:clamp(140px,27vh,220px)}
+.choice img{flex:1;min-height:0;width:100%;object-fit:contain;pointer-events:none;-webkit-user-drag:none}
 .choice .cmark{font-size:16px;font-weight:700;line-height:1.7;min-height:1.7em}
 .choice.is-correct{border-color:var(--ok);background:var(--ok-weak)}
 .choice.is-correct .cmark{color:var(--ok)}
@@ -151,8 +153,9 @@ h1 rt{font-size:0.4em}
       <div class="lvgrid">
         <button class="lv" data-lv="1"><span class="n">1</span><span class="d">{上|うえ}・{正面|しょうめん}から{見|み}た{形|かたち}と、{全部|ぜんぶ}の{数|かず}（2{段|だん}まで）</span></button>
         <button class="lv" data-lv="2"><span class="n">2</span><span class="d">{上|うえ}・{正面|しょうめん}・{右|みぎ}から{見|み}た{形|かたち}（3{段|だん}まで）</span></button>
-        <button class="lv" data-lv="3"><span class="n">3</span><span class="d">{正面|しょうめん}・{右|みぎ}から{見|み}た{形|かたち}と、かくれた{積|つ}み{木|き}を{数|かぞ}える</span></button>
-        <button class="lv" data-lv="4"><span class="n">4</span><span class="d">{三面図|さんめんず}だけを{見|み}て、{積|つ}み{木|き}の{数|かず}を{当|あ}てる</span></button>
+        <button class="lv" data-lv="3"><span class="n">3</span><span class="d">{正面|しょうめん}・{右|みぎ}から{見|み}た{形|かたち}と、かくれた{積|つ}み{木|き}を{数|かぞ}える（3×3マス）</span></button>
+        <button class="lv" data-lv="4"><span class="n">4</span><span class="d">{正面|しょうめん}・{右|みぎ}から{見|み}た{形|かたち}と、かくれた{積|つ}み{木|き}を{数|かぞ}える（4×3マス、{数|かず}が{多|おお}い）</span></button>
+        <button class="lv" data-lv="5"><span class="n">5</span><span class="d">{三面図|さんめんず}を{見|み}て、{合|あ}う{立体|りったい}を{選|えら}ぶ</span></button>
       </div>
 
       <div class="set-row">
@@ -207,6 +210,7 @@ h1 rt{font-size:0.4em}
       <div id="stageNote" class="stage-note"></div>
       <div id="countBadge" class="count-badge hidden"></div>
       <div class="viewbar" id="viewbar">
+        <button data-view="spin">{回|まわ}す</button>
         <button data-view="top">{上|うえ}から</button>
         <button data-view="front">{正面|しょうめん}から</button>
         <button data-view="right">{右|みぎ}から</button>
@@ -248,7 +252,7 @@ document.body.innerHTML = R(document.body.innerHTML);
 const $ = id => document.getElementById(id);
 
 /* ---------- 設定 ---------- */
-const KEY = 'tsumiki-miru-settings-v2';
+const KEY = 'tsumiki-miru-settings-v3';
 const S = { level: 1, count: 4, sound: true, rotate: true, color: 'one', countMode: 'choice' };
 try { const o = JSON.parse(localStorage.getItem(KEY) || 'null'); if (o && typeof o === 'object') Object.assign(S, o); } catch (e) {}
 function saveS() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
@@ -292,8 +296,9 @@ function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.fl
 const LV = {
   1: { W: 3, D: 3, maxH: 2, foot: [3, 5], tot: [4, 7],  hidden: 'none', seq: ['top', 'front', 'count'] },
   2: { W: 3, D: 3, maxH: 3, foot: [4, 7], tot: [6, 13], hidden: 'any',  seq: ['top', 'front', 'right'] },
-  3: { W: 4, D: 3, maxH: 3, foot: [5, 8], tot: [8, 16], hidden: 'some', seq: ['front', 'right', 'count'] },
-  4: { W: 3, D: 3, maxH: 3, foot: [4, 7], tot: [6, 13], hidden: 'any',  seq: ['tri'], unique: true, minStack: 2 },
+  3: { W: 3, D: 3, maxH: 3, foot: [4, 7], tot: [6, 13], hidden: 'some', seq: ['front', 'right', 'count'] },
+  4: { W: 4, D: 3, maxH: 3, foot: [5, 8], tot: [8, 16], hidden: 'some', seq: ['front', 'right', 'count'] },
+  5: { W: 3, D: 3, maxH: 3, foot: [4, 7], tot: [6, 13], hidden: 'any',  seq: ['solid'], minStack: 2 },
 };
 
 function occ(s, x, y, z) { return x >= 0 && x < s.W && z >= 0 && z < s.D && y >= 0 && y < s.h[z][x]; }
@@ -456,6 +461,39 @@ function countChoices(s) {
   c.sort((x, y) => x.v - y.v);
   return { choices: c, ans: c.findIndex(x => x.k === 'correct') };
 }
+function mkShape(h) {
+  const s = { W: h[0].length, D: h.length, h };
+  s.total = h.flat().reduce((a, b) => a + b, 0); s.H = Math.max(...h.flat()); s.foot = h.flat().filter(v => v).length;
+  return s;
+}
+const VIEWFN = { top: viewTop, front: viewFront, right: viewRight };
+// 2つの立体で、見た形がちがう方向
+function diffViews(a, b) { return ['top', 'front', 'right'].filter(d => gkey(VIEWFN[d](a)) !== gkey(VIEWFN[d](b))); }
+// 三面図のどれか1つ以上がちがう立体を、誤答の候補にする
+function solidCandidates(s) {
+  const seen = new Set([JSON.stringify(s.h)]), mir = [], oth = [];
+  const push = (h, list) => {
+    const k = JSON.stringify(h);
+    if (seen.has(k)) return; seen.add(k);
+    const t = mkShape(h);
+    if (t.total < 3 || diffViews(s, t).length === 0) return;
+    list.push(t);
+  };
+  const H = s.h, cl = () => H.map(r => r.slice());
+  push(H.map(r => r.slice().reverse()), mir);          // 左右が反対
+  push(H.slice().reverse().map(r => r.slice()), mir);  // 手前とおくが反対
+  for (let z = 0; z < s.D; z++) for (let x = 0; x < s.W; x++) {
+    const v = H[z][x];
+    if (v > 0 && v < 3) { const h = cl(); h[z][x]++; push(h, oth); }
+    if (v > 1) { const h = cl(); h[z][x]--; push(h, oth); }
+    if (v > 0 && s.foot > 3) { const h = cl(); h[z][x] = 0; push(h, oth); }
+    if (v === 0 && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dz, dx]) => H[z + dz] && H[z + dz][x + dx])) {
+      const h = cl(); h[z][x] = ri(1, 2); push(h, oth);
+    }
+  }
+  shuffle(mir); shuffle(oth);
+  return [...mir.slice(0, 1), ...oth, ...mir.slice(1)];
+}
 function makeQuestion(level, type) {
   const cfg = LV[level];
   for (let t = 0; t < 60; t++) {
@@ -463,6 +501,7 @@ function makeQuestion(level, type) {
     if (!s) continue;
     if (type === 'top') { const c = topChoices(s); if (c) return { type: 'view', dir: 'top', s, ...c }; }
     else if (type === 'front' || type === 'right') { const c = sideChoices(s, type); if (c) return { type: 'view', dir: type, s, ...c }; }
+    else if (type === 'solid') { const c = solidCandidates(s); if (c.length >= 3) return { type, s, cands: c }; }
     else return { type, s, ans: s.total, nc: countChoices(s) };
   }
   return null;
@@ -546,9 +585,7 @@ function init3D() {
   $('glWrap').appendChild(renderer.domElement);
   scene = new THREE.Scene();
   camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 100);
-  scene.add(new THREE.AmbientLight(0xffffff, 0.42 * Math.PI));
-  const dl = new THREE.DirectionalLight(0xffffff, 0.72 * Math.PI); dl.position.set(3, 8, 5); scene.add(dl);
-  const dl2 = new THREE.DirectionalLight(0xffffff, 0.15 * Math.PI); dl2.position.set(-5, 2, -3); scene.add(dl2);
+  addLights(scene);
   world = new THREE.Group(); scene.add(world);
   boxGeo = new THREE.BoxGeometry(1, 1, 1);
   edgeGeo = new THREE.EdgesGeometry(boxGeo);
@@ -598,19 +635,25 @@ function disposeObj(o) {
     if (n.material && n.material !== edgeMat && !Object.values(matCache).includes(n.material)) n.material.dispose();
   });
 }
-function buildShape(s) {
-  if (!renderer) return;
-  while (world.children.length) { const c = world.children.pop(); disposeObj(c); }
-  Object.values(labels).forEach(l => { l.texN.dispose(); l.texH.dispose(); });
-  blocks = []; labels = {};
+function addLights(sc) {
+  sc.add(new THREE.AmbientLight(0xffffff, 0.42 * Math.PI));
+  const dl = new THREE.DirectionalLight(0xffffff, 0.72 * Math.PI); dl.position.set(3, 8, 5); sc.add(dl);
+  const dl2 = new THREE.DirectionalLight(0xffffff, 0.15 * Math.PI); dl2.position.set(-5, 2, -3); sc.add(dl2);
+}
+function clearGroup(group, labs) {
+  while (group.children.length) { const c = group.children.pop(); disposeObj(c); }
+  Object.values(labs).forEach(l => { l.texN.dispose(); l.texH.dispose(); });
+}
+function buildInto(group, s) {
+  const bl = [], labs = {};
   const ox = -s.W / 2, oz = -s.D / 2;
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(s.W + 0.5, s.D + 0.5), new THREE.MeshBasicMaterial({ color: 0xeef2f6 }));
-  floor.rotation.x = -Math.PI / 2; floor.position.y = -0.003; world.add(floor);
+  floor.rotation.x = -Math.PI / 2; floor.position.y = -0.003; group.add(floor);
   const pts = [];
   for (let x = 0; x <= s.W; x++) pts.push(ox + x, 0, oz, ox + x, 0, oz + s.D);
   for (let z = 0; z <= s.D; z++) pts.push(ox, 0, oz + z, ox + s.W, 0, oz + z);
   const gg = new THREE.BufferGeometry(); gg.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
-  world.add(new THREE.LineSegments(gg, new THREE.LineBasicMaterial({ color: 0xb5c2ce })));
+  group.add(new THREE.LineSegments(gg, new THREE.LineBasicMaterial({ color: 0xb5c2ce })));
   const list = [];
   for (let z = 0; z < s.D; z++) for (let x = 0; x < s.W; x++) for (let y = 0; y < s.h[z][x]; y++) list.push([x, y, z]);
   list.sort((a, b) => a[1] - b[1] || a[2] - b[2] || a[0] - b[0]); // 下の段から数える
@@ -618,15 +661,75 @@ function buildShape(s) {
     const g = new THREE.Group();
     g.add(new THREE.Mesh(boxGeo, blockMat(y)), new THREE.LineSegments(edgeGeo, edgeMat));
     g.position.set(ox + x + 0.5, y + 0.5, oz + z + 0.5);
-    world.add(g); blocks.push(g);
+    group.add(g); bl.push(g);
   }
-  labels.front = makeLabel('しょうめん', '正面');
-  labels.front.mesh.position.set(0, 0.002, oz + s.D + 1.35); world.add(labels.front.mesh);
-  labels.right = makeLabel('みぎ', '右');
-  labels.right.mesh.position.set(ox + s.W + 1.35, 0.002, 0); world.add(labels.right.mesh);
-  const af = makeArrow(); af.rotation.set(-Math.PI / 2, 0, 0); af.position.set(0, 0.002, oz + s.D + 0.5); world.add(af);
-  const ar = makeArrow(); ar.rotation.set(-Math.PI / 2, Math.PI / 2, 0); ar.position.set(ox + s.W + 0.5, 0.002, 0); world.add(ar);
+  labs.front = makeLabel('しょうめん', '正面');
+  labs.front.mesh.position.set(0, 0.002, oz + s.D + 1.35); group.add(labs.front.mesh);
+  labs.right = makeLabel('みぎ', '右');
+  labs.right.mesh.position.set(ox + s.W + 1.35, 0.002, 0); group.add(labs.right.mesh);
+  const af = makeArrow(); af.rotation.set(-Math.PI / 2, 0, 0); af.position.set(0, 0.002, oz + s.D + 0.5); group.add(af);
+  const ar = makeArrow(); ar.rotation.set(-Math.PI / 2, Math.PI / 2, 0); ar.position.set(ox + s.W + 0.5, 0.002, 0); group.add(ar);
+  return { bl, labs };
+}
+function buildShape(s) {
+  if (!renderer) return;
+  clearGroup(world, labels);
+  const r = buildInto(world, s);
+  blocks = r.bl; labels = r.labs;
   frame(); applyCam();
+}
+
+/* 三面図の問題：選択肢の立体を、同じ角度・同じ大きさで画像にする */
+let thumbR = null, thumbScene, thumbCam, thumbGroup, thumbLabs = {};
+function thumbSetup() {
+  if (thumbR) return true;
+  if (!renderer) return false;
+  try { thumbR = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); } catch (e) { thumbR = null; return false; }
+  thumbR.setPixelRatio(2); thumbR.setSize(360, 280, false); thumbR.setClearColor(0xffffff, 1);
+  thumbScene = new THREE.Scene(); addLights(thumbScene);
+  thumbCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 100);
+  thumbGroup = new THREE.Group(); thumbScene.add(thumbGroup);
+  return true;
+}
+function shot(s) {
+  clearGroup(thumbGroup, thumbLabs);
+  thumbLabs = buildInto(thumbGroup, s).labs;
+  const asp = 360 / 280, r = 0.5 * Math.hypot(s.W + 2.6, s.D + 2.6, 4) * 0.72;
+  const hh = asp >= 1 ? r : r / asp;
+  thumbCam.left = -hh * asp; thumbCam.right = hh * asp; thumbCam.top = hh; thumbCam.bottom = -hh; thumbCam.updateProjectionMatrix();
+  const ty = 1.5, d = 30, { theta, phi } = HOME;
+  thumbCam.position.set(d * Math.sin(phi) * Math.sin(theta), ty + d * Math.cos(phi), d * Math.sin(phi) * Math.cos(theta));
+  thumbCam.lookAt(0, ty, 0);
+  thumbR.render(thumbScene, thumbCam);
+  // 見た目の差を比べるための小さい画像
+  const g = thumbSmall.getContext('2d');
+  g.fillStyle = '#fff'; g.fillRect(0, 0, 120, 94);
+  g.drawImage(thumbR.domElement, 0, 0, 120, 94);
+  return { url: thumbR.domElement.toDataURL('image/png'), px: g.getImageData(0, 0, 120, 94).data };
+}
+const thumbSmall = document.createElement('canvas'); thumbSmall.width = 120; thumbSmall.height = 94;
+// 色がはっきりちがう点の数
+function pxDiff(a, b) {
+  let n = 0;
+  for (let i = 0; i < a.length; i += 4) if (Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]) > 90) n++;
+  return n;
+}
+// 見た目（画像）が正解と同じになる候補はのぞいて、3つ選ぶ
+function prepareSolid(q) {
+  if (q.choices) return true;
+  if (!thumbSetup()) return false;
+  // 正解とも、ほかの選択肢とも、見た目がはっきりちがうものだけを使う（積み木1つ分の半分くらい以上）
+  const MIN = 70;
+  const cs = shot(q.s), shots = [cs], picked = [];
+  for (const c of q.cands) {
+    if (picked.length >= 3) break;
+    const sh = shot(c);
+    if (shots.every(o => pxDiff(o.px, sh.px) >= MIN)) { shots.push(sh); picked.push({ s: c, img: sh.url, k: 'wrong' }); }
+  }
+  if (picked.length < 3) return false;
+  q.choices = shuffle([{ s: q.s, img: cs.url, k: 'correct' }, ...picked]);
+  q.ans = q.choices.findIndex(c => c.k === 'correct');
+  return true;
 }
 function highlight(dir) {
   for (const k of ['front', 'right']) if (labels[k]) labels[k].mesh.material.map = (k === dir ? labels[k].texH : labels[k].texN);
@@ -648,6 +751,12 @@ function applyCam() {
   const r = 30, ty = cur.H / 2, { theta, phi } = cam;
   camera.position.set(r * Math.sin(phi) * Math.sin(theta), ty + r * Math.cos(phi), r * Math.sin(phi) * Math.cos(theta));
   camera.up.set(0, 1, 0); camera.lookAt(0, ty, 0); needs = true;
+}
+function goSpin() {
+  const step = Math.PI / 2;
+  const base = cam.tween ? cam.tween.t0 + cam.tween.dt : cam.theta;
+  const tt = HOME.theta + (Math.round((base - HOME.theta) / step) + 1) * step;
+  cam.tween = { t0: cam.theta, p0: cam.phi, dt: tt - cam.theta, dp: HOME.phi - cam.phi, time: 0, dur: 0.7 };
 }
 function goView(name, dur = 0.9) {
   const v = VIEWS[name];
@@ -711,11 +820,11 @@ const QTEXT = {
   front: 'この{積|つ}み{木|き}を{正面|しょうめん}から{見|み}ると、どんな{形|かたち}に{見|み}えるかな？',
   right: 'この{積|つ}み{木|き}を{右|みぎ}から{見|み}ると、どんな{形|かたち}に{見|み}えるかな？',
   count: '{積|つ}み{木|き}は、{全部|ぜんぶ}で{何個|なんこ}あるかな？',
-  tri: '{上|うえ}、{正面|しょうめん}、{右|みぎ}から{見|み}た{形|かたち}だよ。{積|つ}み{木|き}は、{全部|ぜんぶ}で{何個|なんこ}あるかな？',
+  solid: '{上|うえ}、{正面|しょうめん}、{右|みぎ}から{見|み}た{形|かたち}だよ。この{三面図|さんめんず}になる{積|つ}み{木|き}は、どれかな？',
 };
 const RESNAME = {
   top: '{上|うえ}から{見|み}た{形|かたち}', front: '{正面|しょうめん}から{見|み}た{形|かたち}', right: '{右|みぎ}から{見|み}た{形|かたち}',
-  count: '{積|つ}み{木|き}の{数|かず}', tri: '{三面図|さんめんず}から{積|つ}み{木|き}の{数|かず}',
+  count: '{積|つ}み{木|き}の{数|かず}', solid: '{三面図|さんめんず}に{合|あ}う{立体|りったい}',
 };
 function explain(kind, dir) {
   switch (kind) {
@@ -759,13 +868,13 @@ function setStageMode(tri) {
 }
 function updateViewbar() {
   const q = Q[qi];
-  const isTri = q && q.type === 'tri';
+  const isTri = q && q.type === 'solid';
   const showViews = !triShown;
   document.querySelectorAll('.viewbar [data-view]').forEach(b => {
     const v = b.dataset.view;
-    if (v === 'count') b.classList.toggle('hidden', !(answered && (q.type === 'count' || q.type === 'tri') && !triShown));
+    if (v === 'count') b.classList.toggle('hidden', !(answered && q.type === 'count' && !triShown));
     else b.classList.toggle('hidden', !showViews);
-    b.disabled = !canRotate();
+    b.disabled = v !== 'spin' && !canRotate();
   });
   document.querySelectorAll('.viewbar .sw').forEach(b => b.classList.toggle('hidden', !(isTri && answered)));
   $('viewbar').classList.toggle('hidden', isTri && !answered);
@@ -773,7 +882,7 @@ function updateViewbar() {
   if (triShown) note.classList.add('hidden');
   else {
     note.classList.remove('hidden');
-    note.innerHTML = R(canRotate() ? '{指|ゆび}でうごかすと、{回|まわ}せるよ' : 'こたえたあとで、{回|まわ}して{確|たし}かめられるよ');
+    note.innerHTML = R(canRotate() ? '{指|ゆび}でうごかすと、{回|まわ}せるよ' : '「{回|まわ}す」で、{向|む}きを{変|か}えられるよ');
   }
 }
 
@@ -792,17 +901,22 @@ function drawTri() {
 if (window.ResizeObserver) new ResizeObserver(() => { if (triShown) drawTri(); }).observe($('triWrap'));
 
 function showQ() {
-  const q = Q[qi]; answered = false;
+  let q = Q[qi]; answered = false;
+  if (q.type === 'solid' && renderer) {
+    // 画像を作れなかったときは、別の形で作り直す
+    let t = 0;
+    while (!prepareSolid(q) && t++ < 10) { const nq = makeQuestion(S.level, 'solid'); if (nq) { Q[qi] = nq; q = nq; } }
+  }
   $('prog').textContent = `${qi + 1} / ${Q.length}`;
   if (cur !== q.s) { cur = q.s; buildShape(q.s); }
   cam.theta = HOME.theta; cam.phi = HOME.phi; cam.tween = null; countAnim = null;
   blocks.forEach(b => (b.visible = true)); hideBadge();
   highlight(q.type === 'view' ? q.dir : null);
   applyCam();
-  setStageMode(q.type === 'tri');
+  setStageMode(q.type === 'solid');
 
   const key = q.type === 'view' ? q.dir : q.type;
-  const useChoice = q.type === 'view' || S.countMode === 'choice';
+  const useChoice = q.type === 'view' || q.type === 'solid' || S.countMode === 'choice';
   $('qtext').innerHTML = R(QTEXT[key] + (useChoice ? '<span class="qsub">ア・イ・ウ・エから1つ{選|えら}んでね。</span>' : '<span class="qsub">△▽か、{数字|すうじ}を{入|い}れてこたえてね。</span>'));
   const area = $('answerArea'), fb = $('feedback');
   fb.classList.add('hidden'); fb.innerHTML = '';
@@ -812,6 +926,13 @@ function showQ() {
     area.innerHTML = '<div class="choices">' + q.choices.map((c, i) =>
       `<button class="choice" data-i="${i}"><span class="ck">${KANA[i]}</span>${choiceSvg(c.g, dims)}${q.dir === 'top' ? R('<span class="fside">▲ {正面|しょうめん}</span>') : ''}<span class="cmark"></span></button>`).join('') + '</div>';
     area.querySelectorAll('.choice').forEach(b => b.addEventListener('click', () => answerChoice(+b.dataset.i)));
+  } else if (q.type === 'solid') {
+    if (!q.choices) { area.innerHTML = R('<p class="glerr">この{端末|たんまつ}では、{立体|りったい}を{表示|ひょうじ}できないよ。</p>'); }
+    else {
+      area.innerHTML = '<div class="choices">' + q.choices.map((c, i) =>
+        `<button class="choice schoice" data-i="${i}"><span class="ck">${KANA[i]}</span><img src="${c.img}" alt="${KANA[i]}" draggable="false"><span class="cmark"></span></button>`).join('') + '</div>';
+      area.querySelectorAll('.choice').forEach(b => b.addEventListener('click', () => answerSolid(+b.dataset.i)));
+    }
   } else if (S.countMode === 'choice') {
     area.innerHTML = '<div class="choices">' + q.nc.choices.map((c, i) =>
       `<button class="choice nchoice" data-i="${i}"><span class="ck">${KANA[i]}</span><span class="nval">${c.v}<small>${R('{個|こ}')}</small></span><span class="cmark"></span></button>`).join('') + '</div>';
@@ -852,6 +973,29 @@ function answerChoice(i) {
   goView(q.dir);
 }
 
+function answerSolid(i) {
+  if (answered) return;
+  answered = true;
+  const q = Q[qi], ok = i === q.ans;
+  results.push({ q, ok });
+  ok ? sndOK() : sndNG();
+  document.querySelectorAll('.choice').forEach((b, k) => {
+    b.disabled = true;
+    if (k === q.ans) { b.classList.add('is-correct'); b.querySelector('.cmark').innerHTML = R('{正解|せいかい}'); }
+    else if (k === i) { b.classList.add('is-wrong'); b.querySelector('.cmark').innerHTML = R('{選|えら}んだもの'); }
+  });
+  let html = ok
+    ? `<div class="fb-title ok">せいかい！</div>`
+    : `<div class="fb-title ng">おしい！ せいかいは「${KANA[q.ans]}」だよ。</div>`;
+  if (!ok) {
+    const d = diffViews(q.s, q.choices[i].s).map(x => DIRNAME[x]).join('と');
+    html += `<p class="fb-text">${KANA[i]}は、${d}から{見|み}た{形|かたち}が、{三面図|さんめんず}とちがうよ。</p>`;
+  }
+  html += `<p class="fb-text">「{三面図|さんめんず}」と「{立体|りったい}」のボタンで{切|き}りかえて、{確|たし}かめてみてね。{上|うえ}・{正面|しょうめん}・{右|みぎ}のボタンで、その{向|む}きから{見|み}られるよ。</p>`;
+  finishAnswer(html);
+  setStageMode(false);
+}
+
 function answerCount(v, ci) {
   if (answered) return;
   answered = true;
@@ -880,7 +1024,6 @@ function answerCount(v, ci) {
     <div class="hmap">${heightMapSvg(s)}<span class="cap">▲ {正面|しょうめん}</span></div>
     <p class="fb-text">{下|した}の{段|だん}から1つずつ{数|かぞ}えてみるよ。</p>`;
   finishAnswer(html);
-  if (q.type === 'tri') setStageMode(false);
   startCount();
 }
 
@@ -909,8 +1052,9 @@ function showResult() {
 
 /* ---------- ボタンの設定 ---------- */
 document.querySelectorAll('.viewbar [data-view]').forEach(b => b.addEventListener('click', () => {
-  if (!canRotate()) return;
   const v = b.dataset.view;
+  if (v === 'spin') { goSpin(); return; }
+  if (!canRotate()) return;
   if (v === 'count') { cam.tween = null; goView('home', 0.6); startCount(); }
   else { countAnim = null; blocks.forEach(x => (x.visible = true)); hideBadge(); goView(v); }
 }));
