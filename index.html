@@ -254,8 +254,8 @@ document.body.innerHTML = R(document.body.innerHTML);
 const $ = id => document.getElementById(id);
 
 /* ---------- 設定 ---------- */
-const KEY = 'tsumiki-miru-settings-v3';
-const S = { level: 1, count: 4, sound: true, rotate: true, color: 'one', countMode: 'choice' };
+const KEY = 'tsumiki-miru-settings-v4';
+const S = { level: 1, count: 4, sound: true, rotate: false, color: 'one', countMode: 'choice' };
 try { const o = JSON.parse(localStorage.getItem(KEY) || 'null'); if (o && typeof o === 'object') Object.assign(S, o); } catch (e) {}
 function saveS() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
 const CNT_MIN = 3, CNT_MAX = 30;
