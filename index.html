@@ -84,6 +84,10 @@ h1 rt{font-size:0.4em}
 .choice{background:#fff;border:3px solid var(--line);border-radius:14px;padding:6px 8px 4px;display:flex;flex-direction:column;align-items:center;position:relative;height:clamp(120px,21vh,180px)}
 .choice .ck{position:absolute;left:8px;top:4px;font-size:22px;font-weight:700;color:var(--sub)}
 .choice svg{flex:1;width:100%;min-height:0}
+.choice .fside{font-size:14px;font-weight:700;color:var(--sub);line-height:1.6}
+.choice.nchoice{justify-content:center;height:clamp(96px,15vh,130px)}
+.nval{flex:1;display:flex;align-items:center;gap:4px;font-size:44px;font-weight:700}
+.nval small{font-size:22px}
 .choice .cmark{font-size:16px;font-weight:700;line-height:1.7;min-height:1.7em}
 .choice.is-correct{border-color:var(--ok);background:var(--ok-weak)}
 .choice.is-correct .cmark{color:var(--ok)}
@@ -155,7 +159,7 @@ h1 rt{font-size:0.4em}
         <span class="set-name">{問題|もんだい}の{数|かず}</span>
         <div class="stepper">
           <button id="cntDown" aria-label="へらす">▽</button>
-          <input id="cntIn" type="text" inputmode="numeric" pattern="[0-9]*" value="9">
+          <input id="cntIn" type="text" inputmode="numeric" pattern="[0-9]*" value="4">
           <button id="cntUp" aria-label="ふやす">△</button>
         </div>
       </div>
@@ -173,7 +177,13 @@ h1 rt{font-size:0.4em}
 
       <div class="set-row">
         <span class="set-name">{積|つ}み{木|き}の{色|いろ}</span>
-        <div class="seg" data-key="color"><button data-val="layer">{段|だん}ごとに{変|か}える</button><button data-val="one">{同|おな}じ{色|いろ}</button></div>
+        <div class="seg" data-key="color"><button data-val="one">{同|おな}じ{色|いろ}</button><button data-val="layer">{段|だん}ごとに{変|か}える</button></div>
+      </div>
+
+      <div class="set-row">
+        <span class="set-name">{数|かず}のこたえ{方|かた}</span>
+        <div class="seg" data-key="countMode"><button data-val="choice">{選|えら}ぶ</button><button data-val="input">{数字|すうじ}を{入|い}れる</button></div>
+        <p class="note">「{全部|ぜんぶ}で{何個|なんこ}」の{問題|もんだい}で、4つの{数|かず}から{選|えら}ぶか、{数字|すうじ}を{自分|じぶん}で{入|い}れるかを{決|き}めます。</p>
       </div>
     </div>
 
@@ -238,8 +248,8 @@ document.body.innerHTML = R(document.body.innerHTML);
 const $ = id => document.getElementById(id);
 
 /* ---------- 設定 ---------- */
-const KEY = 'tsumiki-miru-settings-v1';
-const S = { level: 1, count: 9, sound: true, rotate: true, color: 'layer' };
+const KEY = 'tsumiki-miru-settings-v2';
+const S = { level: 1, count: 4, sound: true, rotate: true, color: 'one', countMode: 'choice' };
 try { const o = JSON.parse(localStorage.getItem(KEY) || 'null'); if (o && typeof o === 'object') Object.assign(S, o); } catch (e) {}
 function saveS() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
 const CNT_MIN = 3, CNT_MAX = 30;
@@ -376,8 +386,8 @@ function gDims(g) {
   const m = trimMask(g.m); return { c: m[0].length, r: m.length };
 }
 
-function assemble(correct, g1, g2) {
-  const used = new Set([gkey(correct)]), out = [];
+function assemble(correct, g1, g2, exclude = []) {
+  const used = new Set([gkey(correct), ...exclude]), out = [];
   const take = (list, n) => {
     for (const c of shuffle(list.slice())) {
       if (out.length >= n) break;
@@ -411,8 +421,16 @@ function sideChoices(s, dir) {
   return assemble(correct, g1, g2);
 }
 
+function rot90(m) {
+  const o = [];
+  for (let x = 0; x < m[0].length; x++) { const r = []; for (let z = m.length - 1; z >= 0; z--) r.push(m[z][x]); o.push(r); }
+  return o;
+}
 function topChoices(s) {
   const m = viewTop(s).m, correct = { t: 'mask', m };
+  // 正解を90度・180度・270度回した形は、見る向きを変えると正解にもなるので使わない
+  const exclude = []; let rm = trimMask(m);
+  for (let i = 0; i < 4; i++) { exclude.push('m' + rm.map(r => r.join('')).join('/')); rm = rot90(rm); }
   const g1 = [
     { g: { t: 'mask', m: m.map(r => r.slice().reverse()) }, k: 'mirrorTop' },
     { g: { t: 'mask', m: m.slice().reverse().map(r => r.slice()) }, k: 'flipTop' },
@@ -425,23 +443,40 @@ function topChoices(s) {
       if (nb) { c[z][x] = 1; g2.push({ g: { t: 'mask', m: c }, k: 'plusTop' }); }
     } else if (n > 2) { c[z][x] = 0; g2.push({ g: { t: 'mask', m: c }, k: 'minusTop' }); }
   }
-  return assemble(correct, g1, g2);
+  return assemble(correct, g1, g2, exclude);
 }
 
-function makeSet(level) {
+// 数の選択肢：見えている数だけ、上から見たマスの数だけ、などのまちがいを入れる
+function countChoices(s) {
+  const T = s.total, c = [{ v: T, k: 'correct' }], used = new Set([T]);
+  const add = (v, k) => { if (v > 0 && !used.has(v) && c.length < 4) { used.add(v); c.push({ v, k }); } };
+  if (s.hidden > 0) add(T - s.hidden, 'visible');
+  add(s.foot, 'foot');
+  for (const d of shuffle([1, -1, 2, -2, 3, -3])) add(T + d, 'near');
+  c.sort((x, y) => x.v - y.v);
+  return { choices: c, ans: c.findIndex(x => x.k === 'correct') };
+}
+function makeQuestion(level, type) {
   const cfg = LV[level];
   for (let t = 0; t < 60; t++) {
     const s = genShape(cfg);
     if (!s) continue;
-    const qs = []; let ok = true;
-    for (const type of cfg.seq) {
-      if (type === 'top') { const c = topChoices(s); if (!c) { ok = false; break; } qs.push({ type: 'view', dir: 'top', s, ...c }); }
-      else if (type === 'front' || type === 'right') { const c = sideChoices(s, type); if (!c) { ok = false; break; } qs.push({ type: 'view', dir: type, s, ...c }); }
-      else qs.push({ type, s, ans: s.total });
-    }
-    if (ok) return qs;
+    if (type === 'top') { const c = topChoices(s); if (c) return { type: 'view', dir: 'top', s, ...c }; }
+    else if (type === 'front' || type === 'right') { const c = sideChoices(s, type); if (c) return { type: 'view', dir: type, s, ...c }; }
+    else return { type, s, ans: s.total, nc: countChoices(s) };
   }
   return null;
+}
+// 問題ごとに新しい形を作る（同じ形が続かないようにする）
+function makeQuiz(level, n) {
+  const seq = LV[level].seq, out = []; let prev = '';
+  for (let i = 0; i < n; i++) {
+    let q = null;
+    for (let t = 0; t < 20; t++) { q = makeQuestion(level, seq[i % seq.length]); if (q && JSON.stringify(q.s.h) !== prev) break; }
+    if (!q) continue;
+    prev = JSON.stringify(q.s.h); out.push(q);
+  }
+  return out;
 }
 // ===LOGIC END===
 
@@ -672,7 +707,7 @@ let Q = [], qi = 0, results = [], triShown = false;
 const KANA = ['ア', 'イ', 'ウ', 'エ'];
 const DIRNAME = { top: '{上|うえ}', front: '{正面|しょうめん}', right: '{右|みぎ}' };
 const QTEXT = {
-  top: 'この{積|つ}み{木|き}を{真上|まうえ}から{見|み}ると、どんな{形|かたち}に{見|み}えるかな？',
+  top: 'この{積|つ}み{木|き}を{真上|まうえ}から{見|み}ると、どんな{形|かたち}に{見|み}えるかな？<span class="qsub">{正面|しょうめん}が{下|した}になるように{見|み}た{形|かたち}だよ。</span>',
   front: 'この{積|つ}み{木|き}を{正面|しょうめん}から{見|み}ると、どんな{形|かたち}に{見|み}えるかな？',
   right: 'この{積|つ}み{木|き}を{右|みぎ}から{見|み}ると、どんな{形|かたち}に{見|み}えるかな？',
   count: '{積|つ}み{木|き}は、{全部|ぜんぶ}で{何個|なんこ}あるかな？',
@@ -705,9 +740,7 @@ function explain(kind, dir) {
 function show(id) { document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.id === id)); }
 
 function startQuiz() {
-  Q = []; let guard = 0;
-  while (Q.length < S.count && guard++ < 200) { const set = makeSet(S.level); if (set) Q.push(...set); }
-  Q = Q.slice(0, S.count); qi = 0; results = [];
+  Q = makeQuiz(S.level, S.count); qi = 0; results = [];
   $('lvTag').textContent = 'レベル' + S.level;
   show('quiz');
   if (!renderer && glOK) init3D();
@@ -769,15 +802,20 @@ function showQ() {
   setStageMode(q.type === 'tri');
 
   const key = q.type === 'view' ? q.dir : q.type;
-  $('qtext').innerHTML = R(QTEXT[key] + (q.type === 'view' ? '<span class="qsub">ア・イ・ウ・エから1つ{選|えら}んでね。</span>' : '<span class="qsub">△▽か、{数字|すうじ}を{入|い}れてこたえてね。</span>'));
+  const useChoice = q.type === 'view' || S.countMode === 'choice';
+  $('qtext').innerHTML = R(QTEXT[key] + (useChoice ? '<span class="qsub">ア・イ・ウ・エから1つ{選|えら}んでね。</span>' : '<span class="qsub">△▽か、{数字|すうじ}を{入|い}れてこたえてね。</span>'));
   const area = $('answerArea'), fb = $('feedback');
   fb.classList.add('hidden'); fb.innerHTML = '';
   if (q.type === 'view') {
     const dims = { c: 1, r: 1 };
     q.choices.forEach(c => { const d = gDims(c.g); dims.c = Math.max(dims.c, d.c); dims.r = Math.max(dims.r, d.r); });
     area.innerHTML = '<div class="choices">' + q.choices.map((c, i) =>
-      `<button class="choice" data-i="${i}"><span class="ck">${KANA[i]}</span>${choiceSvg(c.g, dims)}<span class="cmark"></span></button>`).join('') + '</div>';
+      `<button class="choice" data-i="${i}"><span class="ck">${KANA[i]}</span>${choiceSvg(c.g, dims)}${q.dir === 'top' ? R('<span class="fside">▲ {正面|しょうめん}</span>') : ''}<span class="cmark"></span></button>`).join('') + '</div>';
     area.querySelectorAll('.choice').forEach(b => b.addEventListener('click', () => answerChoice(+b.dataset.i)));
+  } else if (S.countMode === 'choice') {
+    area.innerHTML = '<div class="choices">' + q.nc.choices.map((c, i) =>
+      `<button class="choice nchoice" data-i="${i}"><span class="ck">${KANA[i]}</span><span class="nval">${c.v}<small>${R('{個|こ}')}</small></span><span class="cmark"></span></button>`).join('') + '</div>';
+    area.querySelectorAll('.choice').forEach(b => b.addEventListener('click', () => answerCount(q.nc.choices[+b.dataset.i].v, +b.dataset.i)));
   } else {
     area.innerHTML = R(`<div class="numbox"><div class="numrow">
       <button id="numDown" aria-label="へらす">▽</button>
@@ -814,26 +852,32 @@ function answerChoice(i) {
   goView(q.dir);
 }
 
-function answerCount(v) {
+function answerCount(v, ci) {
   if (answered) return;
   answered = true;
   const q = Q[qi], s = q.s, ok = v === q.ans;
   results.push({ q, ok });
   ok ? sndOK() : sndNG();
-  $('ansBtn').disabled = true; $('numUp').disabled = true; $('numDown').disabled = true; $('numIn').disabled = true;
+  if (ci != null) {
+    document.querySelectorAll('.choice').forEach((b, k) => {
+      b.disabled = true;
+      if (k === q.nc.ans) { b.classList.add('is-correct'); b.querySelector('.cmark').innerHTML = R('{正解|せいかい}'); }
+      else if (k === ci) { b.classList.add('is-wrong'); b.querySelector('.cmark').innerHTML = R('{選|えら}んだもの'); }
+    });
+  } else ['ansBtn', 'numUp', 'numDown', 'numIn'].forEach(id => { const e = $(id); if (e) e.disabled = true; });
   let html = ok
     ? `<div class="fb-title ok">せいかい！ {全部|ぜんぶ}で${q.ans}{個|こ}だよ。</div>`
     : `<div class="fb-title ng">おしい！ せいかいは${q.ans}{個|こ}だよ。</div>`;
   if (!ok) {
-    if (q.type === 'count' && s.hidden > 0 && v === s.total - s.hidden)
+    if (s.hidden > 0 && v === s.total - s.hidden)
       html += `<p class="fb-text">{見|み}えている{積|つ}み{木|き}だけを{数|かぞ}えると${v}{個|こ}になるね。{下|した}にかくれている{積|つ}み{木|き}が${s.hidden}{個|こ}あるよ。</p>`;
-    else if (q.type === 'count' && s.hidden > 0)
-      html += `<p class="fb-text">{下|した}にかくれている{積|つ}み{木|き}が${s.hidden}{個|こ}あるよ。</p>`;
-    else if (q.type === 'tri' && v === s.foot)
+    else if (v === s.foot)
       html += `<p class="fb-text">{上|うえ}から{見|み}た{形|かたち}のマスの{数|かず}だけ{数|かぞ}えると${v}{個|こ}になるね。{上|うえ}に{積|つ}んである{積|つ}み{木|き}も{数|かぞ}えてね。</p>`;
+    else if (s.hidden > 0)
+      html += `<p class="fb-text">{下|した}にかくれている{積|つ}み{木|き}が${s.hidden}{個|こ}あるよ。</p>`;
   }
   html += `<p class="fb-text">{上|うえ}から{見|み}た{図|ず}に、それぞれの{場所|ばしょ}の{高|たか}さを{書|か}くと{数|かぞ}えやすいよ。</p>
-    <div class="hmap">${heightMapSvg(s)}<span class="cap">↓ {正面|しょうめん}</span></div>
+    <div class="hmap">${heightMapSvg(s)}<span class="cap">▲ {正面|しょうめん}</span></div>
     <p class="fb-text">{下|した}の{段|だん}から1つずつ{数|かぞ}えてみるよ。</p>`;
   finishAnswer(html);
   if (q.type === 'tri') setStageMode(false);
