@@ -914,7 +914,7 @@ let Q = [], qi = 0, results = [], triShown = false;
 const KANA = ['ア', 'イ', 'ウ', 'エ'];
 const DIRNAME = { top: '{上|うえ}', front: '{正面|しょうめん}', right: '{右|みぎ}' };
 const QTEXT = {
-  top: 'この{積|つ}み{木|き}を{真上|まうえ}から{見|み}ると、どんな{形|かたち}に{見|み}えるかな？<span class="qsub">{正面|しょうめん}が{下|した}になるように{見|み}た{形|かたち}だよ。</span>',
+  top: 'この{積|つ}み{木|き}を{真上|まうえ}から{見|み}ると、どんな{形|かたち}に{見|み}えるかな？',
   front: 'この{積|つ}み{木|き}を{正面|しょうめん}から{見|み}ると、どんな{形|かたち}に{見|み}えるかな？',
   right: 'この{積|つ}み{木|き}を{右|みぎ}から{見|み}ると、どんな{形|かたち}に{見|み}えるかな？',
   count: '{積|つ}み{木|き}は、{全部|ぜんぶ}で{何個|なんこ}あるかな？',
@@ -975,12 +975,7 @@ function updateViewbar() {
   });
   document.querySelectorAll('.viewbar .sw').forEach(b => b.classList.toggle('hidden', !(isTri && answered)));
   $('viewbar').classList.toggle('hidden', isTri && !answered);
-  const note = $('stageNote');
-  if (triShown) note.classList.add('hidden');
-  else {
-    note.classList.remove('hidden');
-    note.innerHTML = R(canRotate() ? '{指|ゆび}でうごかすと、{回|まわ}せるよ' : '「まわす」で、{向|む}きを{変|か}えられるよ');
-  }
+  $('stageNote').classList.add('hidden');
 }
 
 function drawTri() {
@@ -1015,7 +1010,7 @@ function showQ() {
 
   const key = q.type === 'view' ? q.dir : q.type;
   const useChoice = q.type === 'view' || q.type === 'solid' || S.countMode === 'choice';
-  $('qtext').innerHTML = R(QTEXT[key] + (useChoice ? '<span class="qsub">ア・イ・ウ・エから1つ{選|えら}んでね。</span>' : '<span class="qsub">△▽か、{数字|すうじ}を{入|い}れてこたえてね。</span>'));
+  $('qtext').innerHTML = R(QTEXT[key]);
   const area = $('answerArea'), fb = $('feedback');
   fb.classList.add('hidden'); fb.innerHTML = '';
   if (q.type === 'view') {
@@ -1066,7 +1061,6 @@ function answerChoice(i) {
   let html = ok
     ? `<div class="fb-title ok">せいかい！</div>`
     : `<div class="fb-title ng">おしい！ せいかいは「${KANA[q.ans]}」だよ。</div><p class="fb-text">${KANA[i]}は、${explain(q.choices[i].k, q.dir)}</p>`;
-  html += `<p class="fb-text">${DIRNAME[q.dir]}から{見|み}た{向|む}きに、{積|つ}み{木|き}が{回|まわ}るよ。{正解|せいかい}の{形|かたち}とくらべてみてね。</p>`;
   finishAnswer(html);
   goView(q.dir);
 }
@@ -1089,7 +1083,6 @@ function answerSolid(i) {
     const d = diffViews(q.s, q.choices[i].s).map(x => DIRNAME[x]).join('と');
     html += `<p class="fb-text">${KANA[i]}は、${d}から{見|み}た{形|かたち}が、{三面図|さんめんず}とちがうよ。</p>`;
   }
-  html += `<p class="fb-text">「{三面図|さんめんず}」と「{立体|りったい}」のボタンで{切|き}りかえて、{確|たし}かめてみてね。{上|うえ}・{正面|しょうめん}・{右|みぎ}のボタンで、その{向|む}きから{見|み}られるよ。</p>`;
   finishAnswer(html);
   setStageMode(false);
 }
@@ -1118,9 +1111,8 @@ function answerCount(v, ci) {
     else if (s.hidden > 0)
       html += `<p class="fb-text">{下|した}にかくれている{積|つ}み{木|き}が${s.hidden}{個|こ}あるよ。</p>`;
   }
-  html += `<p class="fb-text">{上|うえ}から{見|み}た{図|ず}に、それぞれの{場所|ばしょ}の{高|たか}さを{書|か}くと{数|かぞ}えやすいよ。</p>
-    <div class="hmap">${heightMapSvg(s)}<span class="cap">▲ {正面|しょうめん}</span></div>
-    <p class="fb-text">{下|した}の{段|だん}から1つずつ{数|かぞ}えてみるよ。</p>`;
+  html += `
+    <div class="hmap">${heightMapSvg(s)}<span class="cap">▲ {正面|しょうめん}</span></div>`;
   finishAnswer(html);
   startCount();
 }
