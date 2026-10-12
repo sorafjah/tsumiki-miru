@@ -29,7 +29,14 @@ button:disabled{cursor:default}
 .screen.active{display:flex}
 
 /* ===== スタート ===== */
-#start{overflow-y:auto;-webkit-overflow-scrolling:touch}
+#start,#intro{overflow-y:auto;-webkit-overflow-scrolling:touch}
+.start-top{display:flex;align-items:center;gap:12px;margin:4px 0 2px}
+.start-top .h1s{flex:1;margin:0}
+.start-top .ghost{min-height:52px;font-size:19px}
+.gear{display:flex;align-items:center;gap:6px}
+.gear .gicon{font-size:24px;line-height:1}
+.gear[aria-expanded="true"]{background:var(--main);color:#fff;border-color:var(--main)}
+.setpanel{margin-top:12px}
 .start-wrap{max-width:900px;width:100%;margin:auto;padding:20px 24px 28px}
 h1{font-size:40px;margin:4px 0 6px;text-align:center;color:var(--main)}
 h1 rt{font-size:0.4em}
@@ -147,12 +154,11 @@ h1 rt{font-size:0.4em}
 </head>
 <body>
 
-<!-- ===== スタート画面 ===== -->
-<section id="start" class="screen active">
+<!-- ===== 説明画面 ===== -->
+<section id="intro" class="screen active">
   <div class="start-wrap">
     <h1>{積|つ}み{木|き}の{見|み}え{方|かた}</h1>
     <p class="lead">{積|つ}み{木|き}を、いろいろな{方向|ほうこう}から{見|み}ると、どんな{形|かたち}に{見|み}えるかな。</p>
-
     <div class="card intro">
       <h2>このアプリで、できること</h2>
       <ol class="steps">
@@ -160,11 +166,23 @@ h1 rt{font-size:0.4em}
         <li><b>{考|かんが}える</b><span>「{上|うえ}から」「{正面|しょうめん}から」「{右|みぎ}から」{見|み}ると、どんな{形|かたち}になるかな。{形|かたち}や{数|かず}を、ア〜エから{選|えら}んでね。レベル5は、{三面図|さんめんず}に{合|あ}う{立体|りったい}を{選|えら}ぶよ。</span></li>
         <li><b>{確|たし}かめる</b><span>{答|こた}えると、{積|つ}み{木|き}がその{向|む}きに{回|まわ}って、{正解|せいかい}の{形|かたち}が{見|み}えるよ。「まわす」をおすと、{斜|なな}めのまま90{度|ど}ずつ{回|まわ}って、かくれた{積|つ}み{木|き}も{見|み}つけられるよ。{数|かぞ}える{問題|もんだい}では、{下|した}の{段|だん}から1つずつ{数|かぞ}えるよ。</span></li>
       </ol>
-      <p class="note">{先生|せんせい}へ：{下|した}の{設定|せってい}で、レベル・{問題|もんだい}の{数|かず}・{答|こた}える{前|まえ}に{回|まわ}せるか・{数|かず}のこたえ{方|かた}を{選|えら}べます。「2〜5」を{選|えら}ぶと、レベル2から5までを{順番|じゅんばん}に{出|だ}せます。</p>
+      <p class="note">{先生|せんせい}へ：つぎの{画面|がめん}の「せってい」で、{問題|もんだい}の{数|かず}・{効果音|こうかおん}・{答|こた}える{前|まえ}に{回|まわ}せるか・{積|つ}み{木|き}の{色|いろ}・{数|かず}のこたえ{方|かた}を{変|か}えられます。</p>
     </div>
+    <button id="okBtn" class="startbtn">わかった</button>
+    <p class="hint">おすと、{問題|もんだい}を{選|えら}ぶ{画面|がめん}になるよ</p>
+  </div>
+</section>
 
+<!-- ===== 問題を選ぶ画面 ===== -->
+<section id="start" class="screen">
+  <div class="start-wrap">
+    <div class="start-top">
+      <button id="backIntro" class="ghost">せつめい</button>
+      <h1 class="h1s">{問題|もんだい}を{選|えら}ぼう</h1>
+      <button id="gearBtn" class="ghost gear" aria-expanded="false"><span class="gicon">⚙</span>せってい</button>
+    </div>
+    <p class="lead">やってみたいレベルを、1つ{選|えら}んでね。</p>
     <div class="card">
-      <h2>{先生|せんせい}が{選|えら}ぶところ</h2>
       <div class="lvgrid">
         <button class="lv" data-lv="1"><span class="n">1</span><span class="d">{上|うえ}・{正面|しょうめん}から{見|み}た{形|かたち}と、{全部|ぜんぶ}の{数|かず}（2{段|だん}まで）</span></button>
         <button class="lv" data-lv="2"><span class="n">2</span><span class="d">{上|うえ}・{正面|しょうめん}・{右|みぎ}から{見|み}た{形|かたち}（3{段|だん}まで）</span></button>
@@ -174,6 +192,10 @@ h1 rt{font-size:0.4em}
         <button class="lv" data-lv="mix"><span class="n small">2〜5</span><span class="d">レベル2〜5を{順番|じゅんばん}に{出|だ}す（{問題|もんだい}の{数|かず}が4なら、{各|かく}レベル1{問|もん}ずつ）</span></button>
       </div>
 
+    </div>
+
+    <div id="setPanel" class="card setpanel hidden">
+      <h2>せってい（{先生|せんせい}が{選|えら}ぶところ）</h2>
       <div class="set-row">
         <span class="set-name">{問題|もんだい}の{数|かず}</span>
         <div class="stepper">
@@ -191,7 +213,7 @@ h1 rt{font-size:0.4em}
       <div class="set-row">
         <span class="set-name">こたえる{前|まえ}に{回|まわ}せる</span>
         <div class="seg" data-key="rotate"><button data-val="true">あり</button><button data-val="false">なし</button></div>
-        <p class="note">「なし」にすると、こたえるまで{積|つ}み{木|き}は{動|うご}きません。{本番|ほんばん}の{検査|けんさ}と{同|おな}じように、{絵|え}を{見|み}て{考|かんが}える{練習|れんしゅう}になります。こたえたあとは、どちらでも{回|まわ}して{確|たし}かめられます。</p>
+        <p class="note">「なし」にすると、こたえるまでは「まわす」ボタンでしか{積|つ}み{木|き}を{動|うご}かせません。{本番|ほんばん}の{検査|けんさ}と{同|おな}じように、{絵|え}を{見|み}て{考|かんが}える{練習|れんしゅう}になります。こたえたあとは、どちらでも{回|まわ}して{確|たし}かめられます。</p>
       </div>
 
       <div class="set-row">
@@ -1084,6 +1106,13 @@ document.querySelectorAll('.viewbar .sw').forEach(b => b.addEventListener('click
 $('quitBtn').addEventListener('click', showResult);
 $('againBtn').addEventListener('click', () => { unlockAudio(); startQuiz(); });
 $('homeBtn').addEventListener('click', () => show('start'));
+$('okBtn').addEventListener('click', () => { unlockAudio(); show('start'); });
+$('backIntro').addEventListener('click', () => show('intro'));
+$('gearBtn').addEventListener('click', () => {
+  const p = $('setPanel'), open = p.classList.toggle('hidden') === false;
+  $('gearBtn').setAttribute('aria-expanded', String(open));
+  if (open) setTimeout(() => { try { p.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (e) {} }, 30);
+});
 
 function renderSettings() {
   document.querySelectorAll('.lv').forEach(b => b.classList.toggle('on', b.dataset.lv === String(S.level)));
