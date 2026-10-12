@@ -33,8 +33,16 @@ button:disabled{cursor:default}
 .start-top{display:flex;align-items:center;gap:12px;margin:4px 0 2px}
 .start-top .h1s{flex:1;margin:0}
 .start-top .ghost{min-height:52px;font-size:19px}
-.gear{display:flex;align-items:center;gap:6px}
-.gear .gicon{font-size:24px;line-height:1}
+#intro .start-wrap{max-width:1120px}
+.figs{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.fig{border:1px solid var(--line);border-radius:14px;padding:10px 12px 8px;background:#fbfcfe}
+.fig h3{font-size:20px;margin:0 0 2px;color:var(--main);text-align:center}
+.fig .pic{height:176px;display:flex;align-items:center;justify-content:center;gap:8px}
+.fig .pic svg{max-height:170px;max-width:100%;height:auto}
+.fig .pic .tv .cap{font-size:14px}
+.fig p{font-size:17px;line-height:1.95;margin:2px 0 0}
+.fakebtn{flex:none;background:var(--main-weak);color:var(--main);font-weight:700;border-radius:12px;padding:6px 10px;font-size:17px;border:2px solid var(--main)}
+.arr{font-size:22px;color:var(--sub);flex:none}
 .gear[aria-expanded="true"]{background:var(--main);color:#fff;border-color:var(--main)}
 .setpanel{margin-top:12px}
 .start-wrap{max-width:900px;width:100%;margin:auto;padding:20px 24px 28px}
@@ -138,6 +146,7 @@ h1 rt{font-size:0.4em}
 .res-btns .ghost{min-height:60px;font-size:22px}
 
 @media (orientation:portrait){
+  .figs{grid-template-columns:1fr}
   .qmain{flex-direction:column}
   .stage{flex:none;height:46vh}
   .choice{height:clamp(110px,14vh,160px)}
@@ -160,16 +169,25 @@ h1 rt{font-size:0.4em}
     <h1>{積|つ}み{木|き}の{見|み}え{方|かた}</h1>
     <p class="lead">{積|つ}み{木|き}を、いろいろな{方向|ほうこう}から{見|み}ると、どんな{形|かたち}に{見|み}えるかな。</p>
     <div class="card intro">
-      <h2>このアプリで、できること</h2>
-      <ol class="steps">
-        <li><b>{見|み}る</b><span>{積|つ}み{木|き}の{立体|りったい}が{出|で}てくるよ。{床|ゆか}の「{正面|しょうめん}」と「{右|みぎ}」の{文字|もじ}が、{見|み}る{向|む}きの{目印|めじるし}だよ。</span></li>
-        <li><b>{考|かんが}える</b><span>「{上|うえ}から」「{正面|しょうめん}から」「{右|みぎ}から」{見|み}ると、どんな{形|かたち}になるかな。{形|かたち}や{数|かず}を、ア〜エから{選|えら}んでね。レベル5は、{三面図|さんめんず}に{合|あ}う{立体|りったい}を{選|えら}ぶよ。</span></li>
-        <li><b>{確|たし}かめる</b><span>{答|こた}えると、{積|つ}み{木|き}がその{向|む}きに{回|まわ}って、{正解|せいかい}の{形|かたち}が{見|み}えるよ。「まわす」をおすと、{斜|なな}めのまま90{度|ど}ずつ{回|まわ}って、かくれた{積|つ}み{木|き}も{見|み}つけられるよ。{数|かぞ}える{問題|もんだい}では、{下|した}の{段|だん}から1つずつ{数|かぞ}えるよ。</span></li>
-      </ol>
-      <p class="note">{先生|せんせい}へ：つぎの{画面|がめん}の「せってい」で、{問題|もんだい}の{数|かず}・{効果音|こうかおん}・{答|こた}える{前|まえ}に{回|まわ}せるか・{積|つ}み{木|き}の{色|いろ}・{数|かず}のこたえ{方|かた}を{変|か}えられます。</p>
+      <div class="figs">
+        <div class="fig">
+          <h3>① {見|み}る</h3>
+          <div class="pic" id="figSee"></div>
+          <p>{積|つ}み{木|き}の{立体|りったい}が{出|で}てくるよ。{床|ゆか}の「{正面|しょうめん}」と「{右|みぎ}」が、{見|み}る{向|む}きの{目印|めじるし}だよ。</p>
+        </div>
+        <div class="fig">
+          <h3>② {考|かんが}える</h3>
+          <div class="pic" id="figThink"></div>
+          <p>{上|うえ}・{正面|しょうめん}・{右|みぎ}から{見|み}ると、どんな{形|かたち}かな。ア〜エから{選|えら}んでね。</p>
+        </div>
+        <div class="fig">
+          <h3>③ {確|たし}かめる</h3>
+          <div class="pic" id="figCheck"></div>
+          <p>{答|こた}えたあとで、「まわす」をおすと、90{度|ど}ずつ{回|まわ}って、かくれた{積|つ}み{木|き}も{見|み}えるよ。</p>
+        </div>
+      </div>
     </div>
     <button id="okBtn" class="startbtn">わかった</button>
-    <p class="hint">おすと、{問題|もんだい}を{選|えら}ぶ{画面|がめん}になるよ</p>
   </div>
 </section>
 
@@ -177,11 +195,10 @@ h1 rt{font-size:0.4em}
 <section id="start" class="screen">
   <div class="start-wrap">
     <div class="start-top">
-      <button id="backIntro" class="ghost">せつめい</button>
+      <button id="backIntro" class="ghost">{説明|せつめい}</button>
       <h1 class="h1s">{問題|もんだい}を{選|えら}ぼう</h1>
-      <button id="gearBtn" class="ghost gear" aria-expanded="false"><span class="gicon">⚙</span>せってい</button>
+      <button id="gearBtn" class="ghost gear" aria-expanded="false">{設定|せってい}</button>
     </div>
-    <p class="lead">やってみたいレベルを、1つ{選|えら}んでね。</p>
     <div class="card">
       <div class="lvgrid">
         <button class="lv" data-lv="1"><span class="n">1</span><span class="d">{上|うえ}・{正面|しょうめん}から{見|み}た{形|かたち}と、{全部|ぜんぶ}の{数|かず}（2{段|だん}まで）</span></button>
@@ -195,7 +212,7 @@ h1 rt{font-size:0.4em}
     </div>
 
     <div id="setPanel" class="card setpanel hidden">
-      <h2>せってい（{先生|せんせい}が{選|えら}ぶところ）</h2>
+      <h2>{設定|せってい}</h2>
       <div class="set-row">
         <span class="set-name">{問題|もんだい}の{数|かず}</span>
         <div class="stepper">
@@ -229,7 +246,6 @@ h1 rt{font-size:0.4em}
     </div>
 
     <button id="startBtn" class="startbtn">はじめる</button>
-    <p class="hint">おすと、はじまるよ</p>
   </div>
 </section>
 
@@ -603,6 +619,44 @@ function heightMapSvg(s) {
     if (v) inner += `<text x="${x * cs + cs / 2}" y="${z * cs + cs / 2 + 8}" text-anchor="middle" font-size="24" font-weight="700" font-family="BIZ UDPGothic, sans-serif" fill="${STROKE}">${v}</text>`;
   }
   return `<svg width="${W + 16}" height="${H + 16}" viewBox="-8 -8 ${W + 16} ${H + 16}" xmlns="http://www.w3.org/2000/svg">${inner}</svg>`;
+}
+
+/* ---------- 説明画面の図 ---------- */
+function isoSvg(h, labels) {
+  const D = h.length, W = h[0].length, A = 0.866, pts = [];
+  const P = (x, y, z) => [(x - z) * A, (x + z) * 0.5 - y];
+  const f = a => a.map(p => p[0].toFixed(3) + ',' + p[1].toFixed(3)).join(' ');
+  let out = '';
+  const poly = (ps, fill, stroke, sw) => { ps.forEach(p => pts.push(p)); out += `<polygon points="${f(ps)}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}" stroke-linejoin="round"/>`; };
+  poly([P(0, 0, 0), P(W, 0, 0), P(W, 0, D), P(0, 0, D)], '#eef2f6', '#b5c2ce', 0.03);
+  for (let z = 0; z < D; z++) for (let x = 0; x < W; x++) for (let y = 0; y < h[z][x]; y++) {
+    poly([P(x, y + 1, z), P(x + 1, y + 1, z), P(x + 1, y + 1, z + 1), P(x, y + 1, z + 1)], '#a5c9f2', '#2b3a46', 0.04);
+    poly([P(x, y, z + 1), P(x + 1, y, z + 1), P(x + 1, y + 1, z + 1), P(x, y + 1, z + 1)], '#7fa9d9', '#2b3a46', 0.04);
+    poly([P(x + 1, y, z), P(x + 1, y, z + 1), P(x + 1, y + 1, z + 1), P(x + 1, y + 1, z)], '#6a93c4', '#2b3a46', 0.04);
+  }
+  if (labels) {
+    const lab = (pos, kana, kanji) => {
+      const [X, Y] = P(...pos);
+      pts.push([X - 0.9, Y - 0.5], [X + 0.9, Y + 0.75]);
+      out += `<text x="${X.toFixed(3)}" y="${(Y - 0.1).toFixed(3)}" text-anchor="middle" font-size="0.3" font-weight="700" fill="#5b6b78" font-family="BIZ UDPGothic, sans-serif">${kana}</text>` +
+             `<text x="${X.toFixed(3)}" y="${(Y + 0.5).toFixed(3)}" text-anchor="middle" font-size="0.62" font-weight="700" fill="#e8892b" font-family="BIZ UDPGothic, sans-serif">${kanji}</text>`;
+    };
+    lab([W / 2, 0, D + 0.9], 'しょうめん', '正面');
+    lab([W + 0.9, 0, D / 2], 'みぎ', '右');
+  }
+  const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+  const x0 = Math.min(...xs) - 0.15, y0 = Math.min(...ys) - 0.15, w = Math.max(...xs) - Math.min(...xs) + 0.3, hh = Math.max(...ys) - Math.min(...ys) + 0.3;
+  return `<svg viewBox="${x0.toFixed(3)} ${y0.toFixed(3)} ${w.toFixed(3)} ${hh.toFixed(3)}" xmlns="http://www.w3.org/2000/svg">${out}</svg>`;
+}
+// 見本の積み木（おくの列から、手前の列の順）。カメラを右へ90度まわすと、いまの「右」が正面になる
+const DEMO = [[0, 2, 0], [1, 1, 0], [1, 1, 1]];
+function rotDemo(h) { const D = h.length, W = h[0].length, n = [...Array(W)].map(() => Array(D).fill(0)); for (let z = 0; z < D; z++) for (let x = 0; x < W; x++) n[x][D - 1 - z] = h[z][x]; return n; }
+function initIntro() {
+  const s = { W: 3, D: 3, h: DEMO }, cs = 20;
+  const view = (svg, cap) => `<div class="tv">${svg}<span class="cap">${R(cap)}</span></div>`;
+  $('figSee').innerHTML = isoSvg(DEMO, true);
+  $('figThink').innerHTML = view(maskSvgFixed(viewTop(s).m, cs), '{上|うえ}から') + view(colsSvgFixed(colMax(s), cs, 2), '{正面|しょうめん}から') + view(colsSvgFixed(rowMax(s).slice().reverse(), cs, 2), '{右|みぎ}から');
+  $('figCheck').innerHTML = isoSvg(DEMO, false) + '<span class="arr">▶</span><span class="fakebtn">まわす</span><span class="arr">▶</span>' + isoSvg(rotDemo(DEMO), false);
 }
 
 /* ---------- 3D ---------- */
@@ -1141,6 +1195,7 @@ $('startBtn').addEventListener('click', () => {
 });
 if (S.level !== 'mix' && !LV[S.level]) S.level = 1;
 renderSettings();
+initIntro();
 
 // フォントの読み込み後に、床の文字（正面・右）を作り直す
 if (document.fonts && document.fonts.load) {
