@@ -43,6 +43,7 @@ h1 rt{font-size:0.4em}
 .lv{display:flex;align-items:center;gap:12px;text-align:left;padding:10px 14px;border:3px solid var(--line);border-radius:14px;background:#fff;min-height:72px}
 .lv .n{flex:none;width:48px;height:48px;border-radius:12px;background:var(--main-weak);color:var(--main);font-size:26px;font-weight:700;display:flex;align-items:center;justify-content:center}
 .lv .d{font-size:16px;line-height:1.9}
+.lv .n.small{font-size:17px}
 .lv.on{border-color:var(--main);background:var(--main-weak)}
 .lv.on .n{background:var(--main);color:#fff}
 .seg{display:flex;border:2px solid var(--main);border-radius:12px;overflow:hidden}
@@ -156,6 +157,7 @@ h1 rt{font-size:0.4em}
         <button class="lv" data-lv="3"><span class="n">3</span><span class="d">{正面|しょうめん}・{右|みぎ}から{見|み}た{形|かたち}と、かくれた{積|つ}み{木|き}を{数|かぞ}える（3×3マス）</span></button>
         <button class="lv" data-lv="4"><span class="n">4</span><span class="d">{正面|しょうめん}・{右|みぎ}から{見|み}た{形|かたち}と、かくれた{積|つ}み{木|き}を{数|かぞ}える（4×3マス、{数|かず}が{多|おお}い）</span></button>
         <button class="lv" data-lv="5"><span class="n">5</span><span class="d">{三面図|さんめんず}を{見|み}て、{合|あ}う{立体|りったい}を{選|えら}ぶ</span></button>
+        <button class="lv" data-lv="mix"><span class="n small">2〜5</span><span class="d">レベル2〜5を{順番|じゅんばん}に{出|だ}す（{問題|もんだい}の{数|かず}が4なら、{各|かく}レベル1{問|もん}ずつ）</span></button>
       </div>
 
       <div class="set-row">
@@ -210,7 +212,7 @@ h1 rt{font-size:0.4em}
       <div id="stageNote" class="stage-note"></div>
       <div id="countBadge" class="count-badge hidden"></div>
       <div class="viewbar" id="viewbar">
-        <button data-view="spin">{回|まわ}す</button>
+        <button data-view="spin">まわす</button>
         <button data-view="top">{上|うえ}から</button>
         <button data-view="front">{正面|しょうめん}から</button>
         <button data-view="right">{右|みぎ}から</button>
@@ -506,13 +508,19 @@ function makeQuestion(level, type) {
   }
   return null;
 }
+// 「レベル2〜5を順番に」で出す問題の種類（それぞれのレベルらしい問題から先に出す）
+const MIXSEQ = { 2: ['front', 'right', 'top'], 3: ['count', 'front', 'right'], 4: ['count', 'right', 'front'], 5: ['solid'] };
 // 問題ごとに新しい形を作る（同じ形が続かないようにする）
 function makeQuiz(level, n) {
-  const seq = LV[level].seq, out = []; let prev = '';
+  const out = [], used = { 2: 0, 3: 0, 4: 0, 5: 0 }; let prev = '';
   for (let i = 0; i < n; i++) {
+    let lv = level, type;
+    if (level === 'mix') { lv = 2 + (i % 4); type = MIXSEQ[lv][used[lv]++ % MIXSEQ[lv].length]; }
+    else type = LV[lv].seq[i % LV[lv].seq.length];
     let q = null;
-    for (let t = 0; t < 20; t++) { q = makeQuestion(level, seq[i % seq.length]); if (q && JSON.stringify(q.s.h) !== prev) break; }
+    for (let t = 0; t < 20; t++) { q = makeQuestion(lv, type); if (q && JSON.stringify(q.s.h) !== prev) break; }
     if (!q) continue;
+    q.level = lv;
     prev = JSON.stringify(q.s.h); out.push(q);
   }
   return out;
@@ -756,7 +764,7 @@ function goSpin() {
   const step = Math.PI / 2;
   const base = cam.tween ? cam.tween.t0 + cam.tween.dt : cam.theta;
   const tt = HOME.theta + (Math.round((base - HOME.theta) / step) + 1) * step;
-  cam.tween = { t0: cam.theta, p0: cam.phi, dt: tt - cam.theta, dp: HOME.phi - cam.phi, time: 0, dur: 0.7 };
+  cam.tween = { t0: cam.theta, p0: cam.phi, dt: tt - cam.theta, dp: HOME.phi - cam.phi, time: 0, dur: 1.0 };
 }
 function goView(name, dur = 0.9) {
   const v = VIEWS[name];
@@ -850,7 +858,6 @@ function show(id) { document.querySelectorAll('.screen').forEach(s => s.classLis
 
 function startQuiz() {
   Q = makeQuiz(S.level, S.count); qi = 0; results = [];
-  $('lvTag').textContent = 'レベル' + S.level;
   show('quiz');
   if (!renderer && glOK) init3D();
   matCache = {}; // 色の設定を反映するため作り直す
@@ -882,7 +889,7 @@ function updateViewbar() {
   if (triShown) note.classList.add('hidden');
   else {
     note.classList.remove('hidden');
-    note.innerHTML = R(canRotate() ? '{指|ゆび}でうごかすと、{回|まわ}せるよ' : '「{回|まわ}す」で、{向|む}きを{変|か}えられるよ');
+    note.innerHTML = R(canRotate() ? '{指|ゆび}でうごかすと、{回|まわ}せるよ' : '「まわす」で、{向|む}きを{変|か}えられるよ');
   }
 }
 
@@ -905,9 +912,10 @@ function showQ() {
   if (q.type === 'solid' && renderer) {
     // 画像を作れなかったときは、別の形で作り直す
     let t = 0;
-    while (!prepareSolid(q) && t++ < 10) { const nq = makeQuestion(S.level, 'solid'); if (nq) { Q[qi] = nq; q = nq; } }
+    while (!prepareSolid(q) && t++ < 10) { const nq = makeQuestion(5, 'solid'); if (nq) { nq.level = q.level; Q[qi] = nq; q = nq; } }
   }
   $('prog').textContent = `${qi + 1} / ${Q.length}`;
+  $('lvTag').textContent = 'レベル' + q.level;
   if (cur !== q.s) { cur = q.s; buildShape(q.s); }
   cam.theta = HOME.theta; cam.phi = HOME.phi; cam.tween = null; countAnim = null;
   blocks.forEach(b => (b.visible = true)); hideBadge();
@@ -1045,7 +1053,7 @@ function showResult() {
   $('resMsg').innerHTML = R(c === n ? '{全部|ぜんぶ}せいかい！ すごいね。' : 'よくがんばったね。ちがった{問題|もんだい}は、もういちどやってみてね。');
   $('resList').innerHTML = results.map((r, i) => {
     const k = r.q.type === 'view' ? r.q.dir : r.q.type;
-    return `<li><span>${i + 1}.</span><span>${R(RESNAME[k])}</span><span class="badge ${r.ok ? 'ok' : 'ng'}">${r.ok ? 'せいかい' : 'ちがったよ'}</span></li>`;
+    return `<li><span>${i + 1}.</span><span>${R(RESNAME[k])}${S.level === 'mix' ? '（レベル' + r.q.level + '）' : ''}</span><span class="badge ${r.ok ? 'ok' : 'ng'}">${r.ok ? 'せいかい' : 'ちがったよ'}</span></li>`;
   }).join('');
   show('result');
 }
@@ -1064,14 +1072,14 @@ $('againBtn').addEventListener('click', () => { unlockAudio(); startQuiz(); });
 $('homeBtn').addEventListener('click', () => show('start'));
 
 function renderSettings() {
-  document.querySelectorAll('.lv').forEach(b => b.classList.toggle('on', +b.dataset.lv === S.level));
+  document.querySelectorAll('.lv').forEach(b => b.classList.toggle('on', b.dataset.lv === String(S.level)));
   document.querySelectorAll('.seg').forEach(seg => {
     const k = seg.dataset.key;
     seg.querySelectorAll('button').forEach(b => b.classList.toggle('on', String(S[k]) === b.dataset.val));
   });
   $('cntIn').value = S.count;
 }
-document.querySelectorAll('.lv').forEach(b => b.addEventListener('click', () => { S.level = +b.dataset.lv; saveS(); renderSettings(); }));
+document.querySelectorAll('.lv').forEach(b => b.addEventListener('click', () => { S.level = b.dataset.lv === 'mix' ? 'mix' : +b.dataset.lv; saveS(); renderSettings(); }));
 document.querySelectorAll('.seg').forEach(seg => seg.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
   const k = seg.dataset.key, v = b.dataset.val;
   S[k] = v === 'true' ? true : v === 'false' ? false : v;
@@ -1088,7 +1096,7 @@ $('startBtn').addEventListener('click', () => {
   setCount(parseInt($('cntIn').value, 10) || S.count);
   startQuiz();
 });
-if (!LV[S.level]) S.level = 1;
+if (S.level !== 'mix' && !LV[S.level]) S.level = 1;
 renderSettings();
 
 // フォントの読み込み後に、床の文字（正面・右）を作り直す
