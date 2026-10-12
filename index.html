@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>積み木の見え方</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f3f6fa; --card:#ffffff; --ink:#263238; --sub:#5b6b78;
+  --main:#2f6fb5; --main-weak:#e4eef9; --line:#cfd9e3;
+  --accent:#e8892b; --accent-weak:#fdf0e1;
+  --ok:#2e7d4f; --ok-weak:#e3f3e9; --ng:#b54a3f; --ng-weak:#f8e7e4;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
+  font-family:"BIZ UDPGothic",sans-serif;
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;
+  touch-action:manipulation;overscroll-behavior:none;-webkit-text-size-adjust:100%}
+input{-webkit-user-select:text;user-select:text;font-family:inherit}
+rt{font-size:0.5em;font-weight:400}
+button{font-family:inherit;color:inherit;min-width:44px;min-height:44px;border:none;cursor:pointer;touch-action:manipulation;background:none}
+button:disabled{cursor:default}
+.hidden{display:none !important}
+.screen{display:none;height:100vh;height:100dvh;width:100%}
+.screen.active{display:flex}
+
+/* ===== スタート ===== */
+#start{overflow-y:auto;-webkit-overflow-scrolling:touch}
+.start-wrap{max-width:900px;width:100%;margin:auto;padding:20px 24px 28px}
+h1{font-size:40px;margin:4px 0 6px;text-align:center;color:var(--main)}
+h1 rt{font-size:0.4em}
+.lead{text-align:center;font-size:20px;line-height:2;margin:0 0 14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px 20px}
+.card h2{font-size:18px;margin:0 0 10px;color:var(--sub)}
+.set-row{display:flex;align-items:center;gap:14px;padding:10px 0;border-top:1px solid #edf1f5;flex-wrap:wrap}
+.set-row:first-of-type{border-top:none}
+.set-name{font-size:19px;font-weight:700;min-width:190px;line-height:1.9}
+.lvgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:6px}
+.lv{display:flex;align-items:center;gap:12px;text-align:left;padding:10px 14px;border:3px solid var(--line);border-radius:14px;background:#fff;min-height:72px}
+.lv .n{flex:none;width:48px;height:48px;border-radius:12px;background:var(--main-weak);color:var(--main);font-size:26px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.lv .d{font-size:16px;line-height:1.9}
+.lv.on{border-color:var(--main);background:var(--main-weak)}
+.lv.on .n{background:var(--main);color:#fff}
+.seg{display:flex;border:2px solid var(--main);border-radius:12px;overflow:hidden}
+.seg button{padding:6px 18px;font-size:18px;font-weight:700;color:var(--main);min-height:50px;min-width:80px}
+.seg button.on{background:var(--main);color:#fff}
+.stepper{display:flex;align-items:center;gap:8px}
+.stepper button{width:56px;height:56px;border-radius:12px;background:var(--main-weak);color:var(--main);font-size:24px;font-weight:700}
+.stepper input{width:84px;height:56px;font-size:28px;font-weight:700;text-align:center;border:2px solid var(--line);border-radius:12px;color:var(--ink)}
+.note{font-size:15px;color:var(--sub);line-height:1.9;width:100%;margin:0}
+.startbtn{display:block;margin:18px auto 4px;background:var(--main);color:#fff;font-size:30px;font-weight:700;border-radius:18px;padding:14px 60px;min-height:76px}
+.hint{text-align:center;color:var(--sub);font-size:18px;margin:6px 0 0}
+
+/* ===== 問題 ===== */
+#quiz{flex-direction:column}
+.qbar{flex:none;height:64px;display:flex;align-items:center;gap:12px;padding:0 16px;background:#fff;border-bottom:1px solid var(--line)}
+#prog{font-size:22px;font-weight:700}
+.tag{background:var(--main-weak);color:var(--main);border-radius:999px;padding:6px 14px;font-weight:700;font-size:17px}
+.spacer{flex:1}
+.ghost{border:2px solid var(--line);border-radius:12px;padding:4px 18px;font-size:18px;font-weight:700;color:var(--sub);background:#fff}
+.qmain{flex:1;display:flex;gap:14px;padding:12px 14px;min-height:0}
+.stage{flex:1.12;display:flex;flex-direction:column;background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden;position:relative;min-width:0}
+#glWrap{flex:1;position:relative;min-height:0}
+#glWrap canvas{display:block;width:100%;height:100%;touch-action:none}
+.glerr{padding:20px;font-size:20px;line-height:2}
+#triWrap{flex:1;display:flex;align-items:center;justify-content:center;min-height:0;padding:10px}
+.trigrid{display:grid;column-gap:28px;row-gap:10px;align-items:end}
+.tv{display:flex;flex-direction:column;align-items:center;gap:2px}
+.tv .cap{font-size:17px;font-weight:700;color:var(--sub);line-height:1.8}
+.stage-note{position:absolute;left:10px;top:8px;font-size:16px;line-height:1.8;color:var(--sub);background:rgba(255,255,255,.9);padding:2px 10px;border-radius:8px;pointer-events:none;max-width:70%}
+.count-badge{position:absolute;right:12px;top:10px;background:var(--accent);color:#fff;font-size:30px;font-weight:700;padding:4px 18px;border-radius:12px;pointer-events:none}
+.viewbar{flex:none;display:flex;gap:8px;padding:8px;border-top:1px solid var(--line);flex-wrap:wrap;justify-content:center}
+.viewbar button{min-height:54px;padding:2px 14px;border-radius:12px;background:var(--main-weak);color:var(--main);font-size:18px;font-weight:700;line-height:1.6}
+.viewbar button.sw.on{background:var(--main);color:#fff}
+.viewbar button:disabled{opacity:.35}
+.panel{flex:1;display:flex;flex-direction:column;gap:10px;min-width:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:6px}
+.qtext{background:#fff;border:1px solid var(--line);border-radius:16px;padding:10px 16px;font-size:22px;line-height:2;font-weight:700}
+.qsub{font-size:17px;color:var(--sub);font-weight:400;display:block;line-height:1.8}
+.choices{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.choice{background:#fff;border:3px solid var(--line);border-radius:14px;padding:6px 8px 4px;display:flex;flex-direction:column;align-items:center;position:relative;height:clamp(120px,21vh,180px)}
+.choice .ck{position:absolute;left:8px;top:4px;font-size:22px;font-weight:700;color:var(--sub)}
+.choice svg{flex:1;width:100%;min-height:0}
+.choice .cmark{font-size:16px;font-weight:700;line-height:1.7;min-height:1.7em}
+.choice.is-correct{border-color:var(--ok);background:var(--ok-weak)}
+.choice.is-correct .cmark{color:var(--ok)}
+.choice.is-wrong{border-color:var(--ng);background:var(--ng-weak)}
+.choice.is-wrong .cmark{color:var(--ng)}
+.numbox{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px;display:flex;flex-direction:column;align-items:center;gap:14px}
+.numrow{display:flex;align-items:center;gap:10px}
+.numrow button{width:70px;height:70px;border-radius:14px;background:var(--main-weak);color:var(--main);font-size:28px;font-weight:700}
+.numrow input{width:110px;height:70px;font-size:40px;font-weight:700;text-align:center;border:2px solid var(--line);border-radius:14px;color:var(--ink)}
+.numrow .unit{font-size:26px;font-weight:700}
+.primary{background:var(--main);color:#fff;font-size:22px;font-weight:700;border-radius:14px;padding:8px 34px;min-height:60px}
+.feedback{background:#fff;border:1px solid var(--line);border-radius:16px;padding:12px 16px;font-size:19px;line-height:2}
+.fb-title{font-size:26px;font-weight:700}
+.fb-title.ok{color:var(--ok)}
+.fb-title.ng{color:var(--ng)}
+.fb-text{margin:2px 0}
+.fb-row{display:flex;justify-content:flex-end;margin-top:6px}
+.hmap{display:flex;flex-direction:column;align-items:center;margin:6px 0}
+.hmap .cap{font-size:16px;color:var(--sub)}
+
+/* ===== 結果 ===== */
+#result{overflow-y:auto;-webkit-overflow-scrolling:touch}
+.res-wrap{max-width:760px;width:100%;margin:auto;padding:24px}
+.score{text-align:center;font-size:30px;font-weight:700;line-height:2}
+.score b{font-size:56px;color:var(--main)}
+.res-msg{text-align:center;font-size:22px;margin:0 0 14px;line-height:2}
+.res-list{list-style:none;margin:0;padding:0}
+.res-list li{display:flex;align-items:center;gap:12px;padding:8px 4px;border-top:1px solid #edf1f5;font-size:19px;line-height:1.9}
+.res-list li:first-child{border-top:none}
+.res-list .badge{margin-left:auto;font-weight:700;border-radius:999px;padding:2px 14px}
+.badge.ok{background:var(--ok-weak);color:var(--ok)}
+.badge.ng{background:var(--ng-weak);color:var(--ng)}
+.res-btns{display:flex;gap:14px;justify-content:center;margin-top:18px;flex-wrap:wrap}
+.res-btns .ghost{min-height:60px;font-size:22px}
+
+@media (orientation:portrait){
+  .qmain{flex-direction:column}
+  .stage{flex:none;height:46vh}
+  .choice{height:clamp(110px,14vh,160px)}
+  .lvgrid{grid-template-columns:1fr}
+}
+@media (max-height:700px) and (orientation:landscape){
+  .qtext{font-size:19px}
+  .choice{height:clamp(100px,20vh,150px)}
+}
+</style>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js"}}
+</script>
+</head>
+<body>
+
+<!-- ===== スタート画面 ===== -->
+<section id="start" class="screen active">
+  <div class="start-wrap">
+    <h1>{積|つ}み{木|き}の{見|み}え{方|かた}</h1>
+    <p class="lead">{積|つ}み{木|き}を、いろいろな{方向|ほうこう}から{見|み}ると、どんな{形|かたち}に{見|み}えるかな。</p>
+
+    <div class="card">
+      <h2>{先生|せんせい}が{選|えら}ぶところ</h2>
+      <div class="lvgrid">
+        <button class="lv" data-lv="1"><span class="n">1</span><span class="d">{上|うえ}・{正面|しょうめん}から{見|み}た{形|かたち}と、{全部|ぜんぶ}の{数|かず}（2{段|だん}まで）</span></button>
+        <button class="lv" data-lv="2"><span class="n">2</span><span class="d">{上|うえ}・{正面|しょうめん}・{右|みぎ}から{見|み}た{形|かたち}（3{段|だん}まで）</span></button>
+        <button class="lv" data-lv="3"><span class="n">3</span><span class="d">{正面|しょうめん}・{右|みぎ}から{見|み}た{形|かたち}と、かくれた{積|つ}み{木|き}を{数|かぞ}える</span></button>
+        <button class="lv" data-lv="4"><span class="n">4</span><span class="d">{三面図|さんめんず}だけを{見|み}て、{積|つ}み{木|き}の{数|かず}を{当|あ}てる</span></button>
+      </div>
+
+      <div class="set-row">
+        <span class="set-name">{問題|もんだい}の{数|かず}</span>
+        <div class="stepper">
+          <button id="cntDown" aria-label="へらす">▽</button>
+          <input id="cntIn" type="text" inputmode="numeric" pattern="[0-9]*" value="9">
+          <button id="cntUp" aria-label="ふやす">△</button>
+        </div>
+      </div>
+
+      <div class="set-row">
+        <span class="set-name">{効果音|こうかおん}</span>
+        <div class="seg" data-key="sound"><button data-val="true">あり</button><button data-val="false">なし</button></div>
+      </div>
+
+      <div class="set-row">
+        <span class="set-name">こたえる{前|まえ}に{回|まわ}せる</span>
+        <div class="seg" data-key="rotate"><button data-val="true">あり</button><button data-val="false">なし</button></div>
+        <p class="note">「なし」にすると、こたえるまで{積|つ}み{木|き}は{動|うご}きません。{本番|ほんばん}の{検査|けんさ}と{同|おな}じように、{絵|え}を{見|み}て{考|かんが}える{練習|れんしゅう}になります。こたえたあとは、どちらでも{回|まわ}して{確|たし}かめられます。</p>
+      </div>
+
+      <div class="set-row">
+        <span class="set-name">{積|つ}み{木|き}の{色|いろ}</span>
+        <div class="seg" data-key="color"><button data-val="layer">{段|だん}ごとに{変|か}える</button><button data-val="one">{同|おな}じ{色|いろ}</button></div>
+      </div>
+    </div>
+
+    <button id="startBtn" class="startbtn">はじめる</button>
+    <p class="hint">おすと、はじまるよ</p>
+  </div>
+</section>
+
+<!-- ===== 問題画面 ===== -->
+<section id="quiz" class="screen">
+  <header class="qbar">
+    <span id="prog"></span>
+    <span id="lvTag" class="tag"></span>
+    <span class="spacer"></span>
+    <button id="quitBtn" class="ghost">おわる</button>
+  </header>
+  <div class="qmain">
+    <div class="stage">
+      <div id="glWrap"></div>
+      <div id="triWrap" class="hidden"></div>
+      <div id="stageNote" class="stage-note"></div>
+      <div id="countBadge" class="count-badge hidden"></div>
+      <div class="viewbar" id="viewbar">
+        <button data-view="top">{上|うえ}から</button>
+        <button data-view="front">{正面|しょうめん}から</button>
+        <button data-view="right">{右|みぎ}から</button>
+        <button data-view="home">もとにもどす</button>
+        <button data-view="count" class="hidden">もういちど{数|かぞ}える</button>
+        <button data-show="tri" class="sw hidden">{三面図|さんめんず}</button>
+        <button data-show="3d" class="sw hidden">{立体|りったい}</button>
+      </div>
+    </div>
+    <div class="panel" id="panel">
+      <div id="qtext" class="qtext"></div>
+      <div id="answerArea"></div>
+      <div id="feedback" class="feedback hidden"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 結果画面 ===== -->
+<section id="result" class="screen">
+  <div class="res-wrap">
+    <div class="card">
+      <div class="score" id="score"></div>
+      <p class="res-msg" id="resMsg"></p>
+      <ul class="res-list" id="resList"></ul>
+    </div>
+    <div class="res-btns">
+      <button id="againBtn" class="primary">もういちど</button>
+      <button id="homeBtn" class="ghost">はじめにもどる</button>
+    </div>
+  </div>
+</section>
+
+<script type="module">
+import * as THREE from 'three';
+
+/* ---------- ふりがな：{漢字|かな} を ruby にする ---------- */
+const R = s => s.replace(/\{([^|{}]+)\|([^{}]+)\}/g, '<ruby>$1<rt>$2</rt></ruby>');
+document.body.innerHTML = R(document.body.innerHTML);
+const $ = id => document.getElementById(id);
+
+/* ---------- 設定 ---------- */
+const KEY = 'tsumiki-miru-settings-v1';
+const S = { level: 1, count: 9, sound: true, rotate: true, color: 'layer' };
+try { const o = JSON.parse(localStorage.getItem(KEY) || 'null'); if (o && typeof o === 'object') Object.assign(S, o); } catch (e) {}
+function saveS() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+const CNT_MIN = 3, CNT_MAX = 30;
+
+/* ---------- 効果音 ---------- */
+let actx = null;
+function unlockAudio() {
+  try {
+    if (!actx) { const C = window.AudioContext || window.webkitAudioContext; if (C) actx = new C(); }
+    if (actx) {
+      if (actx.state === 'suspended') actx.resume();
+      const b = actx.createBuffer(1, 1, 22050), s = actx.createBufferSource();
+      s.buffer = b; s.connect(actx.destination); s.start(0);
+    }
+  } catch (e) {}
+}
+function tone(f, st, dur, vol = 0.12) {
+  if (!S.sound || !actx) return;
+  try {
+    const t = actx.currentTime + st, o = actx.createOscillator(), g = actx.createGain();
+    o.type = 'sine'; o.frequency.value = f;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t + dur + 0.05);
+  } catch (e) {}
+}
+const sndOK = () => { tone(660, 0, 0.18); tone(880, 0.13, 0.32); };
+const sndNG = () => { tone(392, 0, 0.32, 0.07); };
+const sndPop = () => { tone(990, 0, 0.08, 0.04); };
+
+// ===LOGIC START===
+/* ---------- 乱数 ---------- */
+const ri = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+const pick = a => a[Math.floor(Math.random() * a.length)];
+function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+
+/* ---------- レベルごとの設定 ----------
+   h[z][x] = 高さ。x：左→右、z：おく(0)→手前(D-1)。正面は手前(+z)側、右は +x 側。 */
+const LV = {
+  1: { W: 3, D: 3, maxH: 2, foot: [3, 5], tot: [4, 7],  hidden: 'none', seq: ['top', 'front', 'count'] },
+  2: { W: 3, D: 3, maxH: 3, foot: [4, 7], tot: [6, 13], hidden: 'any',  seq: ['top', 'front', 'right'] },
+  3: { W: 4, D: 3, maxH: 3, foot: [5, 8], tot: [8, 16], hidden: 'some', seq: ['front', 'right', 'count'] },
+  4: { W: 3, D: 3, maxH: 3, foot: [4, 7], tot: [6, 13], hidden: 'any',  seq: ['tri'], unique: true, minStack: 2 },
+};
+
+function occ(s, x, y, z) { return x >= 0 && x < s.W && z >= 0 && z < s.D && y >= 0 && y < s.h[z][x]; }
+// 最初の向き（右ななめ前の上）から見て、上・前・右の3面がすべてふさがっている積み木＝見えない
+function countHidden(s) {
+  let n = 0;
+  for (let z = 0; z < s.D; z++) for (let x = 0; x < s.W; x++) for (let y = 0; y < s.h[z][x]; y++)
+    if (occ(s, x, y + 1, z) && occ(s, x, y, z + 1) && occ(s, x + 1, y, z)) n++;
+  return n;
+}
+const colMax = s => { const a = []; for (let x = 0; x < s.W; x++) { let m = 0; for (let z = 0; z < s.D; z++) m = Math.max(m, s.h[z][x]); a.push(m); } return a; };
+const rowMax = s => s.h.map(r => Math.max(...r));
+
+// 三面図から考えられる個数の集まり（2つ以上あれば、すぐに打ち切る）
+function viewSums(s) {
+  const F = colMax(s), Rz = rowMax(s), cells = [];
+  for (let z = 0; z < s.D; z++) for (let x = 0; x < s.W; x++) if (s.h[z][x] > 0) cells.push([z, x, Math.min(F[x], Rz[z])]);
+  const sums = new Set(), cur = new Array(cells.length);
+  (function rec(i, sum) {
+    if (sums.size > 1) return;
+    if (i === cells.length) {
+      const cm = Array(s.W).fill(0), rm = Array(s.D).fill(0);
+      cells.forEach(([z, x], k) => { cm[x] = Math.max(cm[x], cur[k]); rm[z] = Math.max(rm[z], cur[k]); });
+      if (cm.every((v, x) => v === F[x]) && rm.every((v, z) => v === Rz[z])) sums.add(sum);
+      return;
+    }
+    for (let v = 1; v <= cells[i][2]; v++) { cur[i] = v; rec(i + 1, sum + v); }
+  })(0, 0);
+  return sums;
+}
+
+let shapeId = 0;
+function genShape(c) {
+  const W = c.W, D = c.D;
+  for (let t = 0; t < 3000; t++) {
+    const foot = ri(c.foot[0], c.foot[1]);
+    const mask = [...Array(D)].map(() => Array(W).fill(0));
+    const cells = [[ri(0, D - 1), ri(0, W - 1)]];
+    mask[cells[0][0]][cells[0][1]] = 1;
+    let guard = 0;
+    while (cells.length < foot && guard++ < 500) {
+      const [z, x] = pick(cells), [dz, dx] = pick([[1, 0], [-1, 0], [0, 1], [0, -1]]);
+      const nz = z + dz, nx = x + dx;
+      if (nz < 0 || nz >= D || nx < 0 || nx >= W || mask[nz][nx]) continue;
+      mask[nz][nx] = 1; cells.push([nz, nx]);
+    }
+    // どの列・どの行にも積み木がある（三面図に空きができない）
+    let cover = true;
+    for (let x = 0; x < W; x++) if (!mask.some(r => r[x])) cover = false;
+    for (let z = 0; z < D; z++) if (!mask[z].some(v => v)) cover = false;
+    if (!cover) continue;
+    const h = mask.map(r => r.map(v => (v ? ri(1, c.maxH) : 0)));
+    if (c.maxH >= 2 && !h.flat().includes(c.maxH)) { const [z, x] = pick(cells); h[z][x] = c.maxH; }
+    const s = { W, D, h };
+    s.total = h.flat().reduce((a, b) => a + b, 0);
+    s.H = Math.max(...h.flat());
+    s.foot = cells.length;
+    if (s.total < c.tot[0] || s.total > c.tot[1]) continue;
+    s.hidden = countHidden(s);
+    if (c.hidden === 'none' && s.hidden > 0) continue;
+    if (c.hidden === 'some' && s.hidden < 1) continue;
+    if (c.minStack && s.total - s.foot < c.minStack) continue;
+    if (c.unique && viewSums(s).size !== 1) continue;
+    s.id = ++shapeId;
+    return s;
+  }
+  return null;
+}
+
+/* ---------- 見え方（2Dの形） ----------
+   cols：横に並んだ高さ（正面・右から見た形）  mask：上から見た形（上がおく、下が手前） */
+const viewFront = s => ({ t: 'cols', a: colMax(s) });
+const viewRight = s => ({ t: 'cols', a: rowMax(s).slice().reverse() }); // 左はし＝手前
+const viewTop = s => ({ t: 'mask', m: s.h.map(r => r.map(v => (v > 0 ? 1 : 0))) });
+
+function trimCols(a) { let i = 0, j = a.length; while (i < j && !a[i]) i++; while (j > i && !a[j - 1]) j--; return a.slice(i, j); }
+function trimMask(m) {
+  const rows = [], cols = [];
+  m.forEach((r, i) => { if (r.some(v => v)) rows.push(i); });
+  if (!rows.length) return [];
+  for (let x = 0; x < m[0].length; x++) if (m.some(r => r[x])) cols.push(x);
+  const out = [];
+  for (let i = rows[0]; i <= rows[rows.length - 1]; i++) out.push(m[i].slice(cols[0], cols[cols.length - 1] + 1));
+  return out;
+}
+function gkey(g) { return g.t === 'cols' ? 'c' + trimCols(g.a).join(',') : 'm' + trimMask(g.m).map(r => r.join('')).join('/'); }
+function gEmpty(g) { return g.t === 'cols' ? !g.a.some(v => v > 0) : !g.m.some(r => r.some(v => v)); }
+function gDims(g) {
+  if (g.t === 'cols') { const a = trimCols(g.a); return { c: a.length, r: Math.max(...a) }; }
+  const m = trimMask(g.m); return { c: m[0].length, r: m.length };
+}
+
+function assemble(correct, g1, g2) {
+  const used = new Set([gkey(correct)]), out = [];
+  const take = (list, n) => {
+    for (const c of shuffle(list.slice())) {
+      if (out.length >= n) break;
+      const k = gkey(c.g);
+      if (!used.has(k) && !gEmpty(c.g)) { used.add(k); out.push(c); }
+    }
+  };
+  take(g1, 2); take(g2, 3); take(g1, 3);
+  if (out.length < 3) return null;
+  const choices = shuffle([{ g: correct, k: 'correct' }, ...out]);
+  return { choices, ans: choices.findIndex(c => c.k === 'correct') };
+}
+
+function sideChoices(s, dir) {
+  const correct = dir === 'front' ? viewFront(s) : viewRight(s);
+  const other = dir === 'front' ? viewRight(s) : viewFront(s);
+  // いちばん手前の列だけ（正面：z=D-1 の行、右：x=W-1 の列）
+  const near = dir === 'front' ? s.h[s.D - 1].slice() : [...Array(s.D)].map((_, i) => s.h[s.D - 1 - i][s.W - 1]);
+  const a = correct.a;
+  const g1 = [
+    { g: { t: 'cols', a: a.slice().reverse() }, k: 'mirror' },
+    { g: { t: 'cols', a: near }, k: 'near' },
+    { g: other, k: 'other' },
+  ];
+  if (a.some(v => v > 1)) g1.push({ g: { t: 'cols', a: a.map(() => 1) }, k: 'flat' });
+  const g2 = [];
+  a.forEach((v, i) => {
+    if (v < 4) { const p = a.slice(); p[i] = v + 1; g2.push({ g: { t: 'cols', a: p }, k: 'plus' }); }
+    if (v > 1) { const m = a.slice(); m[i] = v - 1; g2.push({ g: { t: 'cols', a: m }, k: 'minus' }); }
+  });
+  return assemble(correct, g1, g2);
+}
+
+function topChoices(s) {
+  const m = viewTop(s).m, correct = { t: 'mask', m };
+  const g1 = [
+    { g: { t: 'mask', m: m.map(r => r.slice().reverse()) }, k: 'mirrorTop' },
+    { g: { t: 'mask', m: m.slice().reverse().map(r => r.slice()) }, k: 'flipTop' },
+  ];
+  const g2 = [], n = m.flat().filter(v => v).length;
+  for (let z = 0; z < s.D; z++) for (let x = 0; x < s.W; x++) {
+    const c = m.map(r => r.slice());
+    if (!m[z][x]) {
+      const nb = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dz, dx]) => m[z + dz] && m[z + dz][x + dx]);
+      if (nb) { c[z][x] = 1; g2.push({ g: { t: 'mask', m: c }, k: 'plusTop' }); }
+    } else if (n > 2) { c[z][x] = 0; g2.push({ g: { t: 'mask', m: c }, k: 'minusTop' }); }
+  }
+  return assemble(correct, g1, g2);
+}
+
+function makeSet(level) {
+  const cfg = LV[level];
+  for (let t = 0; t < 60; t++) {
+    const s = genShape(cfg);
+    if (!s) continue;
+    const qs = []; let ok = true;
+    for (const type of cfg.seq) {
+      if (type === 'top') { const c = topChoices(s); if (!c) { ok = false; break; } qs.push({ type: 'view', dir: 'top', s, ...c }); }
+      else if (type === 'front' || type === 'right') { const c = sideChoices(s, type); if (!c) { ok = false; break; } qs.push({ type: 'view', dir: type, s, ...c }); }
+      else qs.push({ type, s, ans: s.total });
+    }
+    if (ok) return qs;
+  }
+  return null;
+}
+// ===LOGIC END===
+
+/* ---------- 2Dの図（SVG） ---------- */
+const FILL = '#d6dfe9', STROKE = '#2b3a46';
+function svgWrap(w, h, inner, pad = 8) {
+  return `<svg viewBox="${-pad} ${-pad} ${w + pad * 2} ${h + pad * 2}" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">${inner}</svg>`;
+}
+function cellRect(x, y, cs) { return `<rect x="${x}" y="${y}" width="${cs}" height="${cs}" fill="${FILL}" stroke="${STROKE}" stroke-width="2"/>`; }
+// 選択肢用：すべての選択肢を同じ大きさのわくで描く
+function choiceSvg(g, dims) {
+  const cs = 40, W = dims.c * cs, H = dims.r * cs; let inner = '';
+  if (g.t === 'cols') {
+    const a = trimCols(g.a), ox = (dims.c - a.length) / 2 * cs;
+    a.forEach((v, i) => { for (let y = 0; y < v; y++) inner += cellRect(ox + i * cs, H - (y + 1) * cs, cs); });
+    inner += `<line x1="${ox - 8}" y1="${H + 1}" x2="${ox + a.length * cs + 8}" y2="${H + 1}" stroke="#8a99a6" stroke-width="3"/>`;
+  } else {
+    const m = trimMask(g.m), ox = (dims.c - m[0].length) / 2 * cs, oy = (dims.r - m.length) / 2 * cs;
+    m.forEach((r, z) => r.forEach((v, x) => { if (v) inner += cellRect(ox + x * cs, oy + z * cs, cs); }));
+  }
+  return svgWrap(W, H, inner);
+}
+// 三面図用：同じマスの大きさで描く
+function colsSvgFixed(a, cs, rows) {
+  const W = a.length * cs, H = rows * cs; let inner = '';
+  a.forEach((v, i) => { for (let y = 0; y < v; y++) inner += cellRect(i * cs, H - (y + 1) * cs, cs); });
+  inner += `<line x1="-6" y1="${H + 1}" x2="${W + 6}" y2="${H + 1}" stroke="#8a99a6" stroke-width="3"/>`;
+  return `<svg width="${W + 16}" height="${H + 16}" viewBox="-8 -8 ${W + 16} ${H + 16}" xmlns="http://www.w3.org/2000/svg">${inner}</svg>`;
+}
+function maskSvgFixed(m, cs) {
+  const W = m[0].length * cs, H = m.length * cs; let inner = '';
+  m.forEach((r, z) => r.forEach((v, x) => { if (v) inner += cellRect(x * cs, z * cs, cs); }));
+  return `<svg width="${W + 16}" height="${H + 16}" viewBox="-8 -8 ${W + 16} ${H + 16}" xmlns="http://www.w3.org/2000/svg">${inner}</svg>`;
+}
+// 上から見た図に高さの数を書いたもの
+function heightMapSvg(s) {
+  const cs = 40, W = s.W * cs, H = s.D * cs; let inner = '';
+  for (let z = 0; z < s.D; z++) for (let x = 0; x < s.W; x++) {
+    const v = s.h[z][x];
+    inner += `<rect x="${x * cs}" y="${z * cs}" width="${cs}" height="${cs}" fill="${v ? FILL : '#fff'}" stroke="${v ? STROKE : '#c9d3dc'}" stroke-width="${v ? 2 : 1}"/>`;
+    if (v) inner += `<text x="${x * cs + cs / 2}" y="${z * cs + cs / 2 + 8}" text-anchor="middle" font-size="24" font-weight="700" font-family="BIZ UDPGothic, sans-serif" fill="${STROKE}">${v}</text>`;
+  }
+  return `<svg width="${W + 16}" height="${H + 16}" viewBox="-8 -8 ${W + 16} ${H + 16}" xmlns="http://www.w3.org/2000/svg">${inner}</svg>`;
+}
+
+/* ---------- 3D ---------- */
+let renderer = null, scene, camera, world, glOK = true, needs = true;
+let blocks = [], labels = {}, cur = null;
+const HOME = { theta: 0.62, phi: 0.98 };
+const VIEWS = { top: { theta: 0, phi: 0.0001 }, front: { theta: 0, phi: Math.PI / 2 }, right: { theta: Math.PI / 2, phi: Math.PI / 2 }, home: HOME };
+const cam = { theta: HOME.theta, phi: HOME.phi, tween: null };
+let countAnim = null;
+const LAYER_COLORS = [0x86b6e8, 0x93d3a2, 0xf2c76e, 0xee9f92];
+const ONE_COLOR = 0x8fb8e8;
+let boxGeo, edgeGeo, edgeMat, matCache = {};
+
+function init3D() {
+  try {
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+  } catch (e) {
+    glOK = false; renderer = null;
+    $('glWrap').innerHTML = R('<p class="glerr">この{端末|たんまつ}では、{立体|りったい}を{表示|ひょうじ}できないよ。</p>');
+    return;
+  }
+  renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+  renderer.setClearColor(0xffffff, 1);
+  $('glWrap').appendChild(renderer.domElement);
+  scene = new THREE.Scene();
+  camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 100);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.42 * Math.PI));
+  const dl = new THREE.DirectionalLight(0xffffff, 0.72 * Math.PI); dl.position.set(3, 8, 5); scene.add(dl);
+  const dl2 = new THREE.DirectionalLight(0xffffff, 0.15 * Math.PI); dl2.position.set(-5, 2, -3); scene.add(dl2);
+  world = new THREE.Group(); scene.add(world);
+  boxGeo = new THREE.BoxGeometry(1, 1, 1);
+  edgeGeo = new THREE.EdgesGeometry(boxGeo);
+  edgeMat = new THREE.LineBasicMaterial({ color: 0x2b3a46 });
+  bindDrag(renderer.domElement);
+  if (window.ResizeObserver) new ResizeObserver(frame).observe($('glWrap'));
+  window.addEventListener('resize', frame);
+  frame();
+  let last = performance.now();
+  const loop = now => {
+    const dt = Math.min(0.05, Math.max(0, (now - last) / 1000)); last = now;
+    update(dt);
+    if (needs && renderer) { renderer.render(scene, camera); needs = false; }
+    requestAnimationFrame(loop);
+  };
+  requestAnimationFrame(loop);
+}
+function blockMat(y) {
+  const color = S.color === 'one' ? ONE_COLOR : LAYER_COLORS[Math.min(y, LAYER_COLORS.length - 1)];
+  if (!matCache[color]) matCache[color] = new THREE.MeshLambertMaterial({ color, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
+  return matCache[color];
+}
+function labelTex(kana, kanji, color) {
+  const c = document.createElement('canvas'); c.width = 256; c.height = 200;
+  const g = c.getContext('2d');
+  g.fillStyle = color; g.textAlign = 'center'; g.textBaseline = 'alphabetic';
+  g.font = '700 34px "BIZ UDPGothic", sans-serif'; g.fillText(kana, 128, 44);
+  g.font = '700 100px "BIZ UDPGothic", sans-serif'; g.fillText(kanji, 128, 160);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+  return t;
+}
+function makeLabel(kana, kanji) {
+  const texN = labelTex(kana, kanji, '#6b7b88'), texH = labelTex(kana, kanji, '#e8892b');
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1.17), new THREE.MeshBasicMaterial({ map: texN, transparent: true, depthWrite: false }));
+  mesh.rotation.x = -Math.PI / 2;
+  return { mesh, texN, texH };
+}
+function makeArrow() {
+  const sh = new THREE.Shape(); sh.moveTo(0, 0.32); sh.lineTo(-0.3, -0.18); sh.lineTo(0.3, -0.18); sh.lineTo(0, 0.32);
+  const m = new THREE.Mesh(new THREE.ShapeGeometry(sh), new THREE.MeshBasicMaterial({ color: 0x9aa8b4, side: THREE.DoubleSide }));
+  m.rotation.order = 'YXZ';
+  return m;
+}
+function disposeObj(o) {
+  o.traverse(n => {
+    if (n.geometry && n.geometry !== boxGeo && n.geometry !== edgeGeo) n.geometry.dispose();
+    if (n.material && n.material !== edgeMat && !Object.values(matCache).includes(n.material)) n.material.dispose();
+  });
+}
+function buildShape(s) {
+  if (!renderer) return;
+  while (world.children.length) { const c = world.children.pop(); disposeObj(c); }
+  Object.values(labels).forEach(l => { l.texN.dispose(); l.texH.dispose(); });
+  blocks = []; labels = {};
+  const ox = -s.W / 2, oz = -s.D / 2;
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(s.W + 0.5, s.D + 0.5), new THREE.MeshBasicMaterial({ color: 0xeef2f6 }));
+  floor.rotation.x = -Math.PI / 2; floor.position.y = -0.003; world.add(floor);
+  const pts = [];
+  for (let x = 0; x <= s.W; x++) pts.push(ox + x, 0, oz, ox + x, 0, oz + s.D);
+  for (let z = 0; z <= s.D; z++) pts.push(ox, 0, oz + z, ox + s.W, 0, oz + z);
+  const gg = new THREE.BufferGeometry(); gg.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+  world.add(new THREE.LineSegments(gg, new THREE.LineBasicMaterial({ color: 0xb5c2ce })));
+  const list = [];
+  for (let z = 0; z < s.D; z++) for (let x = 0; x < s.W; x++) for (let y = 0; y < s.h[z][x]; y++) list.push([x, y, z]);
+  list.sort((a, b) => a[1] - b[1] || a[2] - b[2] || a[0] - b[0]); // 下の段から数える
+  for (const [x, y, z] of list) {
+    const g = new THREE.Group();
+    g.add(new THREE.Mesh(boxGeo, blockMat(y)), new THREE.LineSegments(edgeGeo, edgeMat));
+    g.position.set(ox + x + 0.5, y + 0.5, oz + z + 0.5);
+    world.add(g); blocks.push(g);
+  }
+  labels.front = makeLabel('しょうめん', '正面');
+  labels.front.mesh.position.set(0, 0.002, oz + s.D + 1.35); world.add(labels.front.mesh);
+  labels.right = makeLabel('みぎ', '右');
+  labels.right.mesh.position.set(ox + s.W + 1.35, 0.002, 0); world.add(labels.right.mesh);
+  const af = makeArrow(); af.rotation.set(-Math.PI / 2, 0, 0); af.position.set(0, 0.002, oz + s.D + 0.5); world.add(af);
+  const ar = makeArrow(); ar.rotation.set(-Math.PI / 2, Math.PI / 2, 0); ar.position.set(ox + s.W + 0.5, 0.002, 0); world.add(ar);
+  frame(); applyCam();
+}
+function highlight(dir) {
+  for (const k of ['front', 'right']) if (labels[k]) labels[k].mesh.material.map = (k === dir ? labels[k].texH : labels[k].texN);
+  needs = true;
+}
+function frame() {
+  if (!renderer || !cur) return;
+  const w = $('glWrap').clientWidth, h = $('glWrap').clientHeight;
+  if (!w || !h) return;
+  renderer.setSize(w, h, false);
+  const asp = w / h, s = cur;
+  const r = 0.5 * Math.hypot(s.W + 3.4, s.D + 3.4, s.H + 1) * 0.8;
+  const hh = asp >= 1 ? r : r / asp;
+  camera.left = -hh * asp; camera.right = hh * asp; camera.top = hh; camera.bottom = -hh;
+  camera.updateProjectionMatrix(); needs = true;
+}
+function applyCam() {
+  if (!renderer || !cur) return;
+  const r = 30, ty = cur.H / 2, { theta, phi } = cam;
+  camera.position.set(r * Math.sin(phi) * Math.sin(theta), ty + r * Math.cos(phi), r * Math.sin(phi) * Math.cos(theta));
+  camera.up.set(0, 1, 0); camera.lookAt(0, ty, 0); needs = true;
+}
+function goView(name, dur = 0.9) {
+  const v = VIEWS[name];
+  let dt = v.theta - cam.theta;
+  while (dt > Math.PI) dt -= Math.PI * 2;
+  while (dt < -Math.PI) dt += Math.PI * 2;
+  cam.tween = { t0: cam.theta, p0: cam.phi, dt, dp: v.phi - cam.phi, time: 0, dur };
+}
+function update(dt) {
+  const tw = cam.tween;
+  if (tw) {
+    tw.time += dt;
+    const k = Math.min(1, tw.time / tw.dur), e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+    cam.theta = tw.t0 + tw.dt * e; cam.phi = tw.p0 + tw.dp * e; applyCam();
+    if (k >= 1) cam.tween = null;
+  }
+  if (countAnim) {
+    countAnim.t -= dt;
+    if (countAnim.t <= 0) {
+      if (countAnim.i < blocks.length) {
+        blocks[countAnim.i].visible = true; countAnim.i++;
+        showBadge(countAnim.i); sndPop(); countAnim.t = 0.45; needs = true;
+      } else countAnim = null;
+    }
+  }
+}
+function startCount() {
+  if (!renderer) return;
+  blocks.forEach(b => (b.visible = false));
+  countAnim = { i: 0, t: 0.5 }; showBadge(0); needs = true;
+}
+function showBadge(n) { const b = $('countBadge'); b.classList.remove('hidden'); b.innerHTML = R(`${n} {個|こ}`); }
+function hideBadge() { $('countBadge').classList.add('hidden'); }
+
+let answered = false;
+const canRotate = () => answered || S.rotate;
+function bindDrag(el) {
+  let id = null, lx = 0, ly = 0;
+  el.addEventListener('pointerdown', e => {
+    if (!canRotate()) return;
+    id = e.pointerId; lx = e.clientX; ly = e.clientY; cam.tween = null;
+    try { el.setPointerCapture(id); } catch (err) {}
+  });
+  el.addEventListener('pointermove', e => {
+    if (e.pointerId !== id) return;
+    const dx = e.clientX - lx, dy = e.clientY - ly; lx = e.clientX; ly = e.clientY;
+    cam.theta -= dx * 0.01;
+    cam.phi = Math.min(Math.PI / 2, Math.max(0.0001, cam.phi - dy * 0.01));
+    applyCam();
+  });
+  const up = e => { if (e.pointerId === id) id = null; };
+  el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
+}
+
+/* ---------- 問題の進行 ---------- */
+let Q = [], qi = 0, results = [], triShown = false;
+const KANA = ['ア', 'イ', 'ウ', 'エ'];
+const DIRNAME = { top: '{上|うえ}', front: '{正面|しょうめん}', right: '{右|みぎ}' };
+const QTEXT = {
+  top: 'この{積|つ}み{木|き}を{真上|まうえ}から{見|み}ると、どんな{形|かたち}に{見|み}えるかな？',
+  front: 'この{積|つ}み{木|き}を{正面|しょうめん}から{見|み}ると、どんな{形|かたち}に{見|み}えるかな？',
+  right: 'この{積|つ}み{木|き}を{右|みぎ}から{見|み}ると、どんな{形|かたち}に{見|み}えるかな？',
+  count: '{積|つ}み{木|き}は、{全部|ぜんぶ}で{何個|なんこ}あるかな？',
+  tri: '{上|うえ}、{正面|しょうめん}、{右|みぎ}から{見|み}た{形|かたち}だよ。{積|つ}み{木|き}は、{全部|ぜんぶ}で{何個|なんこ}あるかな？',
+};
+const RESNAME = {
+  top: '{上|うえ}から{見|み}た{形|かたち}', front: '{正面|しょうめん}から{見|み}た{形|かたち}', right: '{右|みぎ}から{見|み}た{形|かたち}',
+  count: '{積|つ}み{木|き}の{数|かず}', tri: '{三面図|さんめんず}から{積|つ}み{木|き}の{数|かず}',
+};
+function explain(kind, dir) {
+  switch (kind) {
+    case 'mirror': return dir === 'front'
+      ? 'これは{後|うし}ろから{見|み}た{形|かたち}だよ。{左|ひだり}と{右|みぎ}が{反対|はんたい}になっているね。'
+      : 'これは{左|ひだり}から{見|み}た{形|かたち}だよ。{手前|てまえ}とおくが{反対|はんたい}になっているね。';
+    case 'near': return 'いちばん{手前|てまえ}の{列|れつ}だけを{見|み}た{形|かたち}だよ。おくにある{高|たか}い{積|つ}み{木|き}も{見|み}えるよ。';
+    case 'other': return dir === 'front'
+      ? 'これは{右|みぎ}から{見|み}た{形|かたち}だよ。'
+      : 'これは{正面|しょうめん}から{見|み}た{形|かたち}だよ。';
+    case 'flat': return '{高|たか}さを{見|み}ていない{形|かたち}だよ。{上|うえ}に{積|つ}んである{積|つ}み{木|き}も{見|み}えるよ。';
+    case 'plus': return '{積|つ}み{木|き}が1つ{多|おお}い{形|かたち}だよ。';
+    case 'minus': return '{積|つ}み{木|き}が1つ{少|すく}ない{形|かたち}だよ。';
+    case 'mirrorTop': return '{左|ひだり}と{右|みぎ}が{反対|はんたい}になっているよ。';
+    case 'flipTop': return '{手前|てまえ}とおくが{反対|はんたい}になっているよ。{正面|しょうめん}は{下|した}がわだよ。';
+    case 'plusTop': return 'マスが1つ{多|おお}いよ。';
+    case 'minusTop': return 'マスが1つ{少|すく}ないよ。';
+  }
+  return '';
+}
+
+function show(id) { document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.id === id)); }
+
+function startQuiz() {
+  Q = []; let guard = 0;
+  while (Q.length < S.count && guard++ < 200) { const set = makeSet(S.level); if (set) Q.push(...set); }
+  Q = Q.slice(0, S.count); qi = 0; results = [];
+  $('lvTag').textContent = 'レベル' + S.level;
+  show('quiz');
+  if (!renderer && glOK) init3D();
+  matCache = {}; // 色の設定を反映するため作り直す
+  cur = null;
+  showQ();
+}
+
+function setStageMode(tri) {
+  triShown = tri;
+  $('triWrap').classList.toggle('hidden', !tri);
+  $('glWrap').classList.toggle('hidden', tri);
+  document.querySelectorAll('.viewbar .sw').forEach(b => b.classList.toggle('on', (b.dataset.show === 'tri') === tri));
+  if (tri) drawTri(); else { frame(); needs = true; }
+  updateViewbar();
+}
+function updateViewbar() {
+  const q = Q[qi];
+  const isTri = q && q.type === 'tri';
+  const showViews = !triShown;
+  document.querySelectorAll('.viewbar [data-view]').forEach(b => {
+    const v = b.dataset.view;
+    if (v === 'count') b.classList.toggle('hidden', !(answered && (q.type === 'count' || q.type === 'tri') && !triShown));
+    else b.classList.toggle('hidden', !showViews);
+    b.disabled = !canRotate();
+  });
+  document.querySelectorAll('.viewbar .sw').forEach(b => b.classList.toggle('hidden', !(isTri && answered)));
+  $('viewbar').classList.toggle('hidden', isTri && !answered);
+  const note = $('stageNote');
+  if (triShown) note.classList.add('hidden');
+  else {
+    note.classList.remove('hidden');
+    note.innerHTML = R(canRotate() ? '{指|ゆび}でうごかすと、{回|まわ}せるよ' : 'こたえたあとで、{回|まわ}して{確|たし}かめられるよ');
+  }
+}
+
+function drawTri() {
+  const q = Q[qi]; if (!q) return;
+  const s = q.s, wrap = $('triWrap');
+  const w = wrap.clientWidth || 500, h = wrap.clientHeight || 400;
+  const cs = Math.max(18, Math.floor(Math.min((w - 70) / (s.W + s.D), (h - 110) / (s.D + s.H), 60)));
+  const F = colMax(s), Rr = rowMax(s).slice().reverse();
+  wrap.innerHTML = `<div class="trigrid" style="grid-template-columns:${s.W * cs + 16}px ${s.D * cs + 16}px">
+    <div class="tv">${maskSvgFixed(viewTop(s).m, cs)}<span class="cap">${R('{上|うえ}から{見|み}た{形|かたち}')}</span></div><div></div>
+    <div class="tv">${colsSvgFixed(F, cs, s.H)}<span class="cap">${R('{正面|しょうめん}から{見|み}た{形|かたち}')}</span></div>
+    <div class="tv">${colsSvgFixed(Rr, cs, s.H)}<span class="cap">${R('{右|みぎ}から{見|み}た{形|かたち}')}</span></div>
+  </div>`;
+}
+if (window.ResizeObserver) new ResizeObserver(() => { if (triShown) drawTri(); }).observe($('triWrap'));
+
+function showQ() {
+  const q = Q[qi]; answered = false;
+  $('prog').textContent = `${qi + 1} / ${Q.length}`;
+  if (cur !== q.s) { cur = q.s; buildShape(q.s); }
+  cam.theta = HOME.theta; cam.phi = HOME.phi; cam.tween = null; countAnim = null;
+  blocks.forEach(b => (b.visible = true)); hideBadge();
+  highlight(q.type === 'view' ? q.dir : null);
+  applyCam();
+  setStageMode(q.type === 'tri');
+
+  const key = q.type === 'view' ? q.dir : q.type;
+  $('qtext').innerHTML = R(QTEXT[key] + (q.type === 'view' ? '<span class="qsub">ア・イ・ウ・エから1つ{選|えら}んでね。</span>' : '<span class="qsub">△▽か、{数字|すうじ}を{入|い}れてこたえてね。</span>'));
+  const area = $('answerArea'), fb = $('feedback');
+  fb.classList.add('hidden'); fb.innerHTML = '';
+  if (q.type === 'view') {
+    const dims = { c: 1, r: 1 };
+    q.choices.forEach(c => { const d = gDims(c.g); dims.c = Math.max(dims.c, d.c); dims.r = Math.max(dims.r, d.r); });
+    area.innerHTML = '<div class="choices">' + q.choices.map((c, i) =>
+      `<button class="choice" data-i="${i}"><span class="ck">${KANA[i]}</span>${choiceSvg(c.g, dims)}<span class="cmark"></span></button>`).join('') + '</div>';
+    area.querySelectorAll('.choice').forEach(b => b.addEventListener('click', () => answerChoice(+b.dataset.i)));
+  } else {
+    area.innerHTML = R(`<div class="numbox"><div class="numrow">
+      <button id="numDown" aria-label="へらす">▽</button>
+      <input id="numIn" type="text" inputmode="numeric" pattern="[0-9]*" value="1">
+      <button id="numUp" aria-label="ふやす">△</button><span class="unit">{個|こ}</span></div>
+      <button id="ansBtn" class="primary">こたえる</button></div>`);
+    const inp = $('numIn');
+    const setv = v => { inp.value = String(Math.max(0, Math.min(60, v))); };
+    $('numDown').addEventListener('click', () => setv((parseInt(inp.value, 10) || 0) - 1));
+    $('numUp').addEventListener('click', () => setv((parseInt(inp.value, 10) || 0) + 1));
+    inp.addEventListener('input', () => { inp.value = inp.value.replace(/[^0-9０-９]/g, '').replace(/[０-９]/g, d => String.fromCharCode(d.charCodeAt(0) - 0xFEE0)).slice(0, 2); });
+    inp.addEventListener('focus', () => inp.select());
+    $('ansBtn').addEventListener('click', () => { inp.blur(); answerCount(parseInt(inp.value, 10) || 0); });
+  }
+  $('panel').scrollTop = 0;
+}
+
+function answerChoice(i) {
+  if (answered) return;
+  answered = true;
+  const q = Q[qi], ok = i === q.ans;
+  results.push({ q, ok });
+  ok ? sndOK() : sndNG();
+  document.querySelectorAll('.choice').forEach((b, k) => {
+    b.disabled = true;
+    if (k === q.ans) { b.classList.add('is-correct'); b.querySelector('.cmark').innerHTML = R('{正解|せいかい}'); }
+    else if (k === i) { b.classList.add('is-wrong'); b.querySelector('.cmark').innerHTML = R('{選|えら}んだもの'); }
+  });
+  let html = ok
+    ? `<div class="fb-title ok">せいかい！</div>`
+    : `<div class="fb-title ng">おしい！ せいかいは「${KANA[q.ans]}」だよ。</div><p class="fb-text">${KANA[i]}は、${explain(q.choices[i].k, q.dir)}</p>`;
+  html += `<p class="fb-text">${DIRNAME[q.dir]}から{見|み}た{向|む}きに、{積|つ}み{木|き}が{回|まわ}るよ。{正解|せいかい}の{形|かたち}とくらべてみてね。</p>`;
+  finishAnswer(html);
+  goView(q.dir);
+}
+
+function answerCount(v) {
+  if (answered) return;
+  answered = true;
+  const q = Q[qi], s = q.s, ok = v === q.ans;
+  results.push({ q, ok });
+  ok ? sndOK() : sndNG();
+  $('ansBtn').disabled = true; $('numUp').disabled = true; $('numDown').disabled = true; $('numIn').disabled = true;
+  let html = ok
+    ? `<div class="fb-title ok">せいかい！ {全部|ぜんぶ}で${q.ans}{個|こ}だよ。</div>`
+    : `<div class="fb-title ng">おしい！ せいかいは${q.ans}{個|こ}だよ。</div>`;
+  if (!ok) {
+    if (q.type === 'count' && s.hidden > 0 && v === s.total - s.hidden)
+      html += `<p class="fb-text">{見|み}えている{積|つ}み{木|き}だけを{数|かぞ}えると${v}{個|こ}になるね。{下|した}にかくれている{積|つ}み{木|き}が${s.hidden}{個|こ}あるよ。</p>`;
+    else if (q.type === 'count' && s.hidden > 0)
+      html += `<p class="fb-text">{下|した}にかくれている{積|つ}み{木|き}が${s.hidden}{個|こ}あるよ。</p>`;
+    else if (q.type === 'tri' && v === s.foot)
+      html += `<p class="fb-text">{上|うえ}から{見|み}た{形|かたち}のマスの{数|かず}だけ{数|かぞ}えると${v}{個|こ}になるね。{上|うえ}に{積|つ}んである{積|つ}み{木|き}も{数|かぞ}えてね。</p>`;
+  }
+  html += `<p class="fb-text">{上|うえ}から{見|み}た{図|ず}に、それぞれの{場所|ばしょ}の{高|たか}さを{書|か}くと{数|かぞ}えやすいよ。</p>
+    <div class="hmap">${heightMapSvg(s)}<span class="cap">↓ {正面|しょうめん}</span></div>
+    <p class="fb-text">{下|した}の{段|だん}から1つずつ{数|かぞ}えてみるよ。</p>`;
+  finishAnswer(html);
+  if (q.type === 'tri') setStageMode(false);
+  startCount();
+}
+
+function finishAnswer(html) {
+  const last = qi >= Q.length - 1;
+  html += `<div class="fb-row"><button id="nextBtn" class="primary">${last ? 'けっかを{見|み}る' : 'つぎへ'}</button></div>`;
+  const fb = $('feedback');
+  fb.innerHTML = R(html); fb.classList.remove('hidden');
+  $('nextBtn').addEventListener('click', () => { unlockAudio(); qi++; if (qi >= Q.length) showResult(); else showQ(); });
+  updateViewbar();
+  setTimeout(() => { try { fb.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (e) {} }, 50);
+}
+
+function showResult() {
+  if (!results.length) { show('start'); return; }
+  countAnim = null; cam.tween = null;
+  const n = results.length, c = results.filter(r => r.ok).length;
+  $('score').innerHTML = R(`${n}{問|もん}のうち <b>${c}</b> {問|もん}せいかい`);
+  $('resMsg').innerHTML = R(c === n ? '{全部|ぜんぶ}せいかい！ すごいね。' : 'よくがんばったね。ちがった{問題|もんだい}は、もういちどやってみてね。');
+  $('resList').innerHTML = results.map((r, i) => {
+    const k = r.q.type === 'view' ? r.q.dir : r.q.type;
+    return `<li><span>${i + 1}.</span><span>${R(RESNAME[k])}</span><span class="badge ${r.ok ? 'ok' : 'ng'}">${r.ok ? 'せいかい' : 'ちがったよ'}</span></li>`;
+  }).join('');
+  show('result');
+}
+
+/* ---------- ボタンの設定 ---------- */
+document.querySelectorAll('.viewbar [data-view]').forEach(b => b.addEventListener('click', () => {
+  if (!canRotate()) return;
+  const v = b.dataset.view;
+  if (v === 'count') { cam.tween = null; goView('home', 0.6); startCount(); }
+  else { countAnim = null; blocks.forEach(x => (x.visible = true)); hideBadge(); goView(v); }
+}));
+document.querySelectorAll('.viewbar .sw').forEach(b => b.addEventListener('click', () => setStageMode(b.dataset.show === 'tri')));
+$('quitBtn').addEventListener('click', showResult);
+$('againBtn').addEventListener('click', () => { unlockAudio(); startQuiz(); });
+$('homeBtn').addEventListener('click', () => show('start'));
+
+function renderSettings() {
+  document.querySelectorAll('.lv').forEach(b => b.classList.toggle('on', +b.dataset.lv === S.level));
+  document.querySelectorAll('.seg').forEach(seg => {
+    const k = seg.dataset.key;
+    seg.querySelectorAll('button').forEach(b => b.classList.toggle('on', String(S[k]) === b.dataset.val));
+  });
+  $('cntIn').value = S.count;
+}
+document.querySelectorAll('.lv').forEach(b => b.addEventListener('click', () => { S.level = +b.dataset.lv; saveS(); renderSettings(); }));
+document.querySelectorAll('.seg').forEach(seg => seg.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+  const k = seg.dataset.key, v = b.dataset.val;
+  S[k] = v === 'true' ? true : v === 'false' ? false : v;
+  saveS(); renderSettings();
+})));
+function setCount(v) { S.count = Math.max(CNT_MIN, Math.min(CNT_MAX, v || CNT_MIN)); saveS(); renderSettings(); }
+$('cntDown').addEventListener('click', () => setCount(S.count - 1));
+$('cntUp').addEventListener('click', () => setCount(S.count + 1));
+$('cntIn').addEventListener('input', e => { e.target.value = e.target.value.replace(/[^0-9]/g, '').slice(0, 2); });
+$('cntIn').addEventListener('change', e => setCount(parseInt(e.target.value, 10)));
+$('cntIn').addEventListener('focus', e => e.target.select());
+$('startBtn').addEventListener('click', () => {
+  unlockAudio(); // iPadで音を出すため、タップの直後に解錠する
+  setCount(parseInt($('cntIn').value, 10) || S.count);
+  startQuiz();
+});
+if (!LV[S.level]) S.level = 1;
+renderSettings();
+
+// フォントの読み込み後に、床の文字（正面・右）を作り直す
+if (document.fonts && document.fonts.load) {
+  Promise.all([document.fonts.load('700 100px "BIZ UDPGothic"', '正面右'), document.fonts.load('700 34px "BIZ UDPGothic"', 'しょうめんみぎ')])
+    .then(() => { if (cur && renderer) { const q = Q[qi]; buildShape(cur); highlight(q && q.type === 'view' ? q.dir : null); if (answered && q && q.type !== 'view') blocks.forEach(b => (b.visible = true)); } })
+    .catch(() => {});
+}
+</script>
+</body>
+</html>
